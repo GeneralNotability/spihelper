@@ -1312,7 +1312,7 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 
 	// The new case's archivenotice should be updated with the new name
 	let newPageText = await spiHelper_getPageText(spiHelper_pageName, true);
-	newPageText = newPageText.replace(/{{\s*SPI\s*archive notice\|.*}}/i, replacementArchiveNotice);
+	newPageText = newPageText.replace(/{{\s*SPI\s*archive notice\|.*}}/i, '{{SPIarchive notice|' + spiHelper_caseName + '}}');
 	// We also want to add the previous master to the sock list
 	// We use SOCK_SECTION_RE_WITH_NEWLINE to clean up any extraneous whitespace
 	newPageText = newPageText.replace(spiHelper_SOCK_SECTION_RE_WITH_NEWLINE, '====Suspected sockpuppets====' +
