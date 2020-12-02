@@ -1,0 +1,19 @@
+.spihelper-errortext {
+    color: red;
+}
+
+.spihelper-hovertext {
+    border-bottom: 1px dotted;
+}
+
+.spihelper-previewbox {
+    margin: 1em;
+    padding: 0.5em 2.5%;
+    border: solid 1px #ddd;
+    background-color: #fafafa;
+    font-size: 0.8em;
+}
+
+.spihelper-widthlimit {
+    width: 10vw;
+}
