@@ -217,7 +217,7 @@ const spiHelper_TOP_VIEW = `
 		</li>
 		<li id="spiHelper_archiveLine" class="spiHelper_clerkClass">
 			<input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
-			<label for="spiHelper_Archive">Archive case</label>
+			<label for="spiHelper_Archive">Archive case (Clerk only)</label>
 		</li>
 	</ul>
 	<input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" onclick="spiHelper_generateForm()" />
