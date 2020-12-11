@@ -1045,6 +1045,7 @@ async function spiHelper_performActions() {
 						break;
 				}
 				const isLocked = await spiHelper_isUserGloballyLocked(tagEntry.username) ? 'yes' : 'no';
+				const isBlocked = await spiHelper_getUserBlockReason(tagEntry.username) ? 'no' : 'yes';
 				if (isMaster) {
 					// Not doing SPI or LTA fields for now - those auto-detect right now
 					// and I'm not sure if setting them to empty would mess that up
@@ -1070,7 +1071,7 @@ async function spiHelper_performActions() {
 | 1 = ${sockmasterName}
 | 2 = ${tag}
 | locked = ${isLocked}
-| notblocked = no
+| notblocked = ${isBlocked}
 | altmaster = ${altmasterName}
 | altmaster-status = ${altmasterTag}
 }}`;
