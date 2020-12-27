@@ -3,7 +3,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.2.14 "ANI Flu"
+// v2.2.15 "ANI Flu"
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css' );
@@ -505,7 +505,7 @@ async function spiHelper_generateForm() {
 		likelyusers.push(spiHelper_caseName);
 		if (results) {
 			for (let i = 0; i < results.length; i++) {
-				const username = results[i].replace(checkuser_re, '$1');
+				const username = spiHelper_normalizeUsername(results[i].replace(checkuser_re, '$1'));
 				const isIP = mw.util.isIPAddress(username, true);
 				if (!isIP && !likelyusers.includes(username)) {
 					likelyusers.push(username);
@@ -518,7 +518,7 @@ async function spiHelper_generateForm() {
 		const userresults = pagetext.match(user_re);
 		if (userresults) {
 			for (let i = 0; i < userresults.length; i++) {
-				const username = userresults[i].replace(user_re, '$1');
+				const username = spiHelper_normalizeUsername(userresults[i].replace(user_re, '$1'));
 				if (mw.util.isIPAddress(username, true) && !possibleips.includes(username) &&
 					!likelyips.includes(username)) {
 					possibleips.push(username);
@@ -729,7 +729,7 @@ async function spiHelper_performActions() {
 
 					/** @type {BlockEntry} */
 					const item = {
-						username: $('#spiHelper_block_username' + i, $actionView).val().toString().replace(spiHelper_HIDDEN_CHAR_NORM_RE, ''),
+						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
 						duration: $('#spiHelper_block_duration' + i, $actionView).val().toString(),
 						acb: $('#spiHelper_block_acb' + i, $actionView).prop('checked'),
 						ab: $('#spiHelper_block_ab' + i, $actionView).prop('checked'),
@@ -745,7 +745,7 @@ async function spiHelper_performActions() {
 				}
 				if ($('#spiHelper_block_tag' + i).val() !== '') {
 					const item = {
-						username: $('#spiHelper_block_username' + i, $actionView).val().toString().replace(spiHelper_HIDDEN_CHAR_NORM_RE, ''),
+						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
 						tag: $('#spiHelper_block_tag' + i, $actionView).val().toString(),
 						altmasterTag: $('#spiHelper_block_tag_altmaster' + i, $actionView).val().toString()
 					};
@@ -756,14 +756,14 @@ async function spiHelper_performActions() {
 			for (let i = 1; i <= spiHelper_usercount; i++) {
 				if ($('#spiHelper_block_tag' + i, $actionView).val() !== '') {
 					const item = {
-						username: $('#spiHelper_block_username' + i, $actionView).val().toString().replace(spiHelper_HIDDEN_CHAR_NORM_RE, ''),
+						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
 						tag: $('#spiHelper_block_tag' + i, $actionView).val().toString(),
 						altmasterTag: $('#spiHelper_block_tag_altmaster' + i, $actionView).val().toString()
 					};
 					spiHelper_tags.push(item);
 				}
 				if ($('#spiHelper_block_lock' + i, $actionView).prop('checked')) {
-					spiHelper_globalLocks.push($('#spiHelper_block_username' + i, $actionView).val().toString());
+					spiHelper_globalLocks.push(spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()));
 				}
 			}
 		}
@@ -772,7 +772,7 @@ async function spiHelper_performActions() {
 		spiHelper_ActionsSelected.Close = $('#spiHelper_CloseCase', $actionView).prop('checked');
 	}
 	if (spiHelper_ActionsSelected.Rename) {
-		renameTarget = $('#spiHelper_moveTarget', $actionView).val().toString();
+		renameTarget = spiHelper_normalizeUsername($('#spiHelper_moveTarget', $actionView).val().toString());
 	}
 	if (spiHelper_ActionsSelected.Archive) {
 		spiHelper_ActionsSelected.Archive = $('#spiHelper_ArchiveCase', $actionView).prop('checked');
@@ -1322,9 +1322,9 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 	// ending with "sockpuppets" to the level 4 heading beginning with <big> and pull the checkuser
 	// template matching the current case name out. This keeps us from accidentally replacing a
 	// checkuser entry in the admin section
-	const newMasterReString = '(sockpuppets\s*====.*?)\\n^\\s*\\*\\s*{{checkuser\\|(?:1=)?' + spiHelper_caseName + '(?:\|master name\s*=.*)?}}(.*====\s*<big>)';
+	const newMasterReString = '(sockpuppets\\s*====.*?)\\n^\\s*\\*\\s*{{checkuser\\|(?:1=)?' + spiHelper_caseName + '(?:\\|master name\\s*=.*?)?}}\\s*$(.*====\\s*<big>)';
 	const newMasterRe = new RegExp(newMasterReString, 'sm');
-	newPageText = newPageText.replace(newMasterRe, '$1$2');
+	newPageText = newPageText.replace(newMasterRe, '$1\n$2');
 
 	await spiHelper_editPage(spiHelper_pageName, newPageText, 'Updating case following page move', false, spiHelper_settings.watchCase, spiHelper_startingRevID);
 	// Update to the latest revision ID
@@ -1427,11 +1427,12 @@ async function spiHelper_archiveCaseSection(sectionId) {
  * Move or merge the selected case into a different case
  *
  * @param {string} target The username portion of the case this section should be merged into
+ *                        (should have been normalized before getting passed in)
  */
 async function spiHelper_moveCase(target) {
 	// Move or merge an entire case
 	// Normalize: change underscores to spaces
-	target = target.replace('_', ' ');
+	target = target;
 	const newPageName = spiHelper_pageName.replace(spiHelper_caseName, target);
 	const targetPageText = await spiHelper_getPageText(newPageName, false);
 	if (targetPageText) {
@@ -1477,7 +1478,7 @@ async function spiHelper_moveCase(target) {
 /**
  * Move or merge a specific section of a case into a different case
  *
- * @param {string} target The username portion of the case this section should be merged into
+ * @param {string} target The username portion of the case this section should be merged into (pre-normalized)
  * @param {!number} sectionId The section ID of this case that should be moved/merged
  */
 async function spiHelper_moveCaseSection(target, sectionId) {
@@ -1762,6 +1763,7 @@ async function spiHelper_editPage(title, newtext, summary, createonly, watch, ba
 		$statusLine.html('Saved ' + $link.prop('outerHTML'));
 	} catch (error) {
 		$statusLine.addClass('spiHelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error);
+		console.error(error);
 	}
 }
 /**
@@ -2482,5 +2484,28 @@ function spiHelper_isCheckuser() {
 function spiHelper_isClerk() {
 	// Assumption: checkusers should see clerk options. Please don't prove this wrong.
 	return spiHelper_settings.clerk || spiHelper_isCheckuser();
+}
+
+/**
+ * Common username normalization function
+ * @param {string} username Username to normalize
+ *
+ * @return {string} Normalized username
+ */
+function spiHelper_normalizeUsername(username) {
+	// Replace underscores with spaces
+	username = username.replace('_', ' ');
+	// Get rid of bad hidden characters
+	username = username.replace(spiHelper_HIDDEN_CHAR_NORM_RE, '');
+	// Remove leading and trailing spaces
+	username = username.trim();
+	if (mw.util.isIPAddress(username, true)) {
+		// For IP addresses, capitalize them (really only applies to IPv6)
+		username = username.toUpperCase();
+	} else {
+		// For actual usernames, make sure the first letter is capitalized
+		username = username.charAt(0).toUpperCase() + username.slice(1);
+	}
+	return username;
 }
 // </nowiki>
