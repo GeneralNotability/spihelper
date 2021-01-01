@@ -719,7 +719,7 @@ async function spiHelper_performActions() {
 
 					if (masterNotice && $('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
 						noticetype = 'master';
-					} else if (sockNotice && !$('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
+					} else if (sockNotice && !$('#spiHelper_block_tag' + i, $actionView).val().toString().includes('sock')) {
 						noticetype = 'sock';
 					}
 
@@ -944,7 +944,8 @@ async function spiHelper_performActions() {
 				// Talk page notice
 				if (sockmaster && blockEntry.tpn) {
 					let newText = '';
-					if (blockEntry.tpn.includes('sock')) {
+					const isSock = blockEntry.tpn.includes('sock');
+					if (isSock) {
 						newText = '== Blocked as a sockpuppet ==\n';
 					} else {
 						newText = '== Blocked for sockpuppetry ==\n';
@@ -959,7 +960,7 @@ async function spiHelper_performActions() {
 						newText += '|notalk=yes';
 					}
 					newText += '|sig=yes';
-					if (blockEntry.tpn.includes('sock')) {
+					if (isSock) {
 						newText += '|master=' + sockmaster;
 					}
 					newText += '}}';
