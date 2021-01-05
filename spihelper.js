@@ -1071,7 +1071,7 @@ async function spiHelper_performActions() {
 | 1 = ${sockmasterName}
 | 2 = ${tag}
 | locked = ${isLocked}
-| notblocked = ${isBlocked}
+| notblocked = ${isNotBlocked}
 | altmaster = ${altmasterName}
 | altmaster-status = ${altmasterTag}
 }}`;
