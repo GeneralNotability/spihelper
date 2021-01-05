@@ -695,8 +695,6 @@ async function spiHelper_performActions() {
 	/** @type {boolean} */
 	const blankTalk = $('#spiHelper_blanktalk', $actionView).prop('checked');
 	/** @type {boolean} */
-	const tagMaster = $('#spiHelper_blocknoticemaster', $actionView).prop('checked');
-	/** @type {boolean} */
 	const overrideExisting = $('#spiHelper_override', $actionView).prop('checked');
 	/** @type {boolean} */
 	const hideLockNames = $('#spiHelper_hidelocknames', $actionView).prop('checked');
@@ -713,17 +711,15 @@ async function spiHelper_performActions() {
 			cuBlockOnly = $('#spiHelper_cublockonly', $actionView).prop('checked');
 		}
 		if (spiHelper_isAdmin() && !$('#spiHelper_noblock', $actionView).prop('checked')) {
-			const tagMaster = $('#spiHelper_blocknoticemaster', $actionView).prop('checked');
-			const tagsocks = $('#spiHelper_blocknoticesocks', $actionView).prop('checked');
+			const masterNotice = $('#spiHelper_blocknoticemaster', $actionView).prop('checked');
+			const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked');
 			for (let i = 1; i <= spiHelper_usercount; i++) {
 				if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
 					let noticetype = '';
 
-					if (tagMaster && $('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
+					if (masterNotice && $('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
 						noticetype = 'master';
-					} else if (tagsocks && $('#spiHelper_block_tag' + i, $actionView).val() === 'blocked') {
-						noticetype = 'suspectsock';
-					} else if (tagsocks && $('#spiHelper_block_tag' + i, $actionView).val() !== '') {
+					} else if (sockNotice && !$('#spiHelper_block_tag' + i, $actionView).val().toString().includes('sock')) {
 						noticetype = 'sock';
 					}
 
@@ -887,8 +883,9 @@ async function spiHelper_performActions() {
 			altmaster = prompt('Please enter the name of the alternate sockmaster: ', spiHelper_caseName);
 		}
 
-		let blocked = '';
+		let blockedList = '';
 		if (spiHelper_isAdmin()) {
+			const masterNotice = $('#spiHelper_blocknoticemaster', $actionView).prop('checked');
 			spiHelper_blocks.forEach(async (blockEntry) => {
 				const blockReason = await spiHelper_getUserBlockReason(blockEntry.username);
 				if (!spiHelper_isCheckuser() && overrideExisting &&
@@ -896,13 +893,13 @@ async function spiHelper_performActions() {
 					// If you're not a checkuser, we've asked to overwrite existing blocks, and the block
 					// target has a CU block on them, check whether that was intended
 					if (!confirm('User ' + blockEntry.username + ' appears to be CheckUser-blocked, are you SURE you want to re-block them?\n' +
-						'Current block message:\n' +
-						blockReason
+						'Current block message:\n' + blockReason
 					)) {
 						return;
 					}
 				}
 				const isIP = mw.util.isIPAddress(blockEntry.username, true);
+				const isIPRange = isIP && !mw.util.isIPAddress(blockEntry.username, false);
 				let blockSummary = 'Abusing [[WP:SOCK|multiple accounts]]: Please see: [[' + spiHelper_interwikiPrefix + spiHelper_pageName + ']]';
 				if (spiHelper_isCheckuser() && cuBlock) {
 					const cublock_template = isIP ? ('{{checkuserblock}}') : ('{{checkuserblock-account}}');
@@ -911,12 +908,9 @@ async function spiHelper_performActions() {
 					} else {
 						blockSummary = cublock_template + ': ' + blockSummary;
 					}
-				} else if (isIP) {
-					// If this is a rangeblock (heuristic: IP addr with a / in it), mark it as such
-					if (blockEntry.username.includes('/')) {
-						blockSummary = '{{rangeblock| ' + blockSummary +
-							(blockEntry.acb ? '' : '|create=yes') + '}}';
-					}
+				} else if (isIPRange) {
+					blockSummary = '{{rangeblock| ' + blockSummary +
+						(blockEntry.acb ? '' : '|create=yes') + '}}';
 				}
 				const blockSuccess = await spiHelper_blockUser(
 					blockEntry.username,
@@ -938,16 +932,20 @@ async function spiHelper_performActions() {
 					}
 					return;
 				}
-				if (blocked) {
-					blocked += ', ';
+				if (blockedList) {
+					blockedList += ', ';
 				}
-				blocked += '{{noping|' + blockEntry.username + '}}';
-				if (tagMaster && blockEntry.username === sockmaster) {
-					blockEntry.tpn = 'master';
+				blockedList += '{{noping|' + blockEntry.username + '}}';
+				
+				if (isIPRange) {
+					// There isn't really a talk page for an IP range, so return here before we reach that section
+					return;
 				}
+				// Talk page notice
 				if (sockmaster && blockEntry.tpn) {
 					let newText = '';
-					if (blockEntry.tpn.includes('sock')) {
+					const isSock = blockEntry.tpn.includes('sock');
+					if (isSock) {
 						newText = '== Blocked as a sockpuppet ==\n';
 					} else {
 						newText = '== Blocked for sockpuppetry ==\n';
@@ -962,7 +960,7 @@ async function spiHelper_performActions() {
 						newText += '|notalk=yes';
 					}
 					newText += '|sig=yes';
-					if (blockEntry.tpn.includes('sock')) {
+					if (isSock) {
 						newText += '|master=' + sockmaster;
 					}
 					newText += '}}';
@@ -980,8 +978,8 @@ async function spiHelper_performActions() {
 				}
 			});
 		}
-		if (blocked) {
-			logMessage += '\n** blocked ' + blocked;
+		if (blockedList) {
+			logMessage += '\n** blocked ' + blockedList;
 		}
 
 		let tagged = '';
@@ -1090,7 +1088,7 @@ async function spiHelper_performActions() {
 				const cattext = await spiHelper_getPageText(catname, false);
 				// Empty text means the page doesn't exist - create it
 				if (!cattext) {
-					spiHelper_editPage(catname, '{{sockpuppet category}}',
+					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
 						true, spiHelper_settings.watchNewCats);
 					needsPurge = true;
@@ -1100,7 +1098,7 @@ async function spiHelper_performActions() {
 				const catname = 'Category:Suspected Wikipedia sockpuppets of ' + altmaster;
 				const cattext = await spiHelper_getPageText(catname, false);
 				if (!cattext) {
-					spiHelper_editPage(catname, '{{sockpuppet category}}',
+					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
 						true, spiHelper_settings.watchNewCats);
 					needsPurge = true;
@@ -1110,7 +1108,7 @@ async function spiHelper_performActions() {
 				const catname = 'Category:Wikipedia sockpuppets of ' + sockmaster;
 				const cattext = await spiHelper_getPageText(catname, false);
 				if (!cattext) {
-					spiHelper_editPage(catname, '{{sockpuppet category}}',
+					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
 						true, spiHelper_settings.watchNewCats);
 					needsPurge = true;
@@ -1120,7 +1118,7 @@ async function spiHelper_performActions() {
 				const catname = 'Category:Suspected Wikipedia sockpuppets of ' + sockmaster;
 				const cattext = await spiHelper_getPageText(catname, false);
 				if (!cattext) {
-					spiHelper_editPage(catname, '{{sockpuppet category}}',
+					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
 						true, spiHelper_settings.watchNewCats);
 					needsPurge = true;
