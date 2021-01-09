@@ -38,6 +38,7 @@ importScript('User:Timotheus Canens/displaymessage.js');
  * @property {string} username Username to tag
  * @property {string} tag Tag to apply to user
  * @property {string} altmasterTag Altmaster tag to apply to user, if relevant
+ * @property {boolean} blocking Whether this account is marked for block as well
  */
 
 // Globals
@@ -743,7 +744,8 @@ async function spiHelper_performActions() {
 					const item = {
 						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
 						tag: $('#spiHelper_block_tag' + i, $actionView).val().toString(),
-						altmasterTag: $('#spiHelper_block_tag_altmaster' + i, $actionView).val().toString()
+						altmasterTag: $('#spiHelper_block_tag_altmaster' + i, $actionView).val().toString(),
+						blocking: $('#spiHelper_block_doblock' + i, $actionView).prop('checked')
 					};
 					spiHelper_tags.push(item);
 				}
@@ -754,7 +756,8 @@ async function spiHelper_performActions() {
 					const item = {
 						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
 						tag: $('#spiHelper_block_tag' + i, $actionView).val().toString(),
-						altmasterTag: $('#spiHelper_block_tag_altmaster' + i, $actionView).val().toString()
+						altmasterTag: $('#spiHelper_block_tag_altmaster' + i, $actionView).val().toString(),
+						blocking: false
 					};
 					spiHelper_tags.push(item);
 				}
@@ -1043,7 +1046,15 @@ async function spiHelper_performActions() {
 						break;
 				}
 				const isLocked = await spiHelper_isUserGloballyLocked(tagEntry.username) ? 'yes' : 'no';
-				const isNotBlocked = await spiHelper_getUserBlockReason(tagEntry.username) ? 'no' : 'yes';
+				let isNotBlocked;
+				// If this account is going to be blocked, force isNotBlocked to 'no' - it's possible that the
+				// block hasn't gone through by the time we reach this point
+				if (tagEntry.blocking) {
+					isNotBlocked = 'no';
+				} else {
+					// Otherwise, query whether the user is blocked
+					isNotBlocked = await spiHelper_getUserBlockReason(tagEntry.username) ? 'no' : 'yes';
+				} 
 				if (isMaster) {
 					// Not doing SPI or LTA fields for now - those auto-detect right now
 					// and I'm not sure if setting them to empty would mess that up
