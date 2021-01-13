@@ -446,15 +446,15 @@ async function spiHelper_generateForm() {
 			if (spiHelper_isClerk()) {
 				selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false });
 			}
-			if (spiHelper_isCheckuser()) {
-				selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false });
-			}
 		}
 		// CU already requested
 		if (cuRequested && spiHelper_isClerk()) {
 			// Statuses only available if CU has been requested, only clerks + CUs should use these
 			selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false });
 			// Switch the decline option depending on whether the user is a checkuser
+			if (spiHelper_isCheckuser()) {
+				selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false });
+			}
 			if (spiHelper_isCheckuser()) {
 				selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false });
 			}
