@@ -49,10 +49,15 @@ const spiHelper_settings = {
 	// (follow default preferences), 'nochange' (don't change the watchlist
 	// status of the page), and 'unwatch' (unconditionally remove)
 	watchCase: 'preferences',
+	watchCaseExpiry: 'indefinite',
 	watchArchive: 'nochange',
+	watchArchiveExpiry: 'indefinite',
 	watchTaggedUser: 'preferences',
+	watchTaggedUserExpiry: 'indefinite',
 	watchNewCats: 'nochange',
+	watchNewCatsExpiry: 'indefinite',
 	watchBlockedUser: true,
+	watchBlockedUserExpiry: 'indefinite',
 	// Lets people disable clerk options if they're not a clerk
 	clerk: true,
 	// Log all actions to Special:MyPage/spihelper_log
@@ -925,7 +930,8 @@ async function spiHelper_performActions() {
 					(isIP ? false : blockEntry.ab),
 					blockEntry.ntp,
 					blockEntry.nem,
-					spiHelper_settings.watchBlockedUser);
+					spiHelper_settings.watchBlockedUser,
+					spiHelper_settings.watchBlockedUserExpiry);
 				if (!blockSuccess) {
 					// Don't add a block notice if we failed to block
 					if (blockEntry.tpn) {
@@ -1085,7 +1091,8 @@ async function spiHelper_performActions() {
 | altmaster-status = ${altmasterTag}
 }}`;
 				}
-				spiHelper_editPage('User:' + tagEntry.username, tagText, 'Adding sockpuppetry tag per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]', false, spiHelper_settings.watchTaggedUser);
+				spiHelper_editPage('User:' + tagEntry.username, tagText, 'Adding sockpuppetry tag per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
+					false, spiHelper_settings.watchTaggedUser, spiHelper_settings.watchTaggedUserExpiry);
 				if (tagged) {
 					tagged += ', ';
 				}
@@ -1102,7 +1109,7 @@ async function spiHelper_performActions() {
 				if (!cattext) {
 					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
-						true, spiHelper_settings.watchNewCats);
+						true, spiHelper_settings.watchNewCats, spiHelper_settings.watchNewCatsExpiry);
 					needsPurge = true;
 				}
 			}
@@ -1112,7 +1119,7 @@ async function spiHelper_performActions() {
 				if (!cattext) {
 					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
-						true, spiHelper_settings.watchNewCats);
+						true, spiHelper_settings.watchNewCats, spiHelper_settings.watchNewCatsExpiry);
 					needsPurge = true;
 				}
 			}
@@ -1122,7 +1129,7 @@ async function spiHelper_performActions() {
 				if (!cattext) {
 					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
-						true, spiHelper_settings.watchNewCats);
+						true, spiHelper_settings.watchNewCats, spiHelper_settings.watchNewCatsExpiry);
 					needsPurge = true;
 				}
 			}
@@ -1132,7 +1139,7 @@ async function spiHelper_performActions() {
 				if (!cattext) {
 					await spiHelper_editPage(catname, '{{sockpuppet category}}',
 						'Creating sockpuppet category per [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
-						true, spiHelper_settings.watchNewCats);
+						true, spiHelper_settings.watchNewCats, spiHelper_settings.watchNewCatsExpiry);
 					needsPurge = true;
 				}
 			}
@@ -1251,7 +1258,7 @@ async function spiHelper_performActions() {
 
 	// Make all of the requested edits (synchronous since we might make more changes to the page)
 	await spiHelper_editPage(spiHelper_pageName, sectionText, editsummary, false,
-		spiHelper_settings.watchCase, spiHelper_startingRevID, spiHelper_sectionId);
+		spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, spiHelper_sectionId);
 	// Update to the latest revision ID
 	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 	if (spiHelper_ActionsSelected.Archive) {
@@ -1318,7 +1325,7 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 	const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '');
 
 	// The old case should just be the archivenotice template and point to the new case
-	spiHelper_editPage(oldCasePage, replacementArchiveNotice, 'Updating case following page move', false, spiHelper_settings.watchCase);
+	spiHelper_editPage(oldCasePage, replacementArchiveNotice, 'Updating case following page move', false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry);
 
 	// The new case's archivenotice should be updated with the new name
 	let newPageText = await spiHelper_getPageText(spiHelper_pageName, true);
@@ -1336,7 +1343,7 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 	const newMasterRe = new RegExp(newMasterReString, 'sm');
 	newPageText = newPageText.replace(newMasterRe, '$1\n$2');
 
-	await spiHelper_editPage(spiHelper_pageName, newPageText, 'Updating case following page move', false, spiHelper_settings.watchCase, spiHelper_startingRevID);
+	await spiHelper_editPage(spiHelper_pageName, newPageText, 'Updating case following page move', false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID);
 	// Update to the latest revision ID
 	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 }
@@ -1356,7 +1363,7 @@ async function spiHelper_postMergeCleanup(originalText) {
 	newText = originalText + '\n' + newText;
 
 	// Write the updated case
-	await spiHelper_editPage(spiHelper_pageName, newText, 'Re-adding previous cases following merge', false, spiHelper_settings.watchCase, spiHelper_startingRevID);
+	await spiHelper_editPage(spiHelper_pageName, newText, 'Re-adding previous cases following merge', false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID);
 	// Update to the latest revision ID
 	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 }
@@ -1419,7 +1426,7 @@ async function spiHelper_archiveCaseSection(sectionId) {
 
 	// Blank the section we archived
 	await spiHelper_editPage(spiHelper_pageName, '', 'Archiving case section to [[' + spiHelper_getInterwikiPrefix() + spiHelper_getArchiveName() + ']]',
-		false, spiHelper_settings.watchCase, spiHelper_startingRevID, sectionId);
+		false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, sectionId);
 	// Update to the latest revision ID
 	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 
@@ -1430,7 +1437,8 @@ async function spiHelper_archiveCaseSection(sectionId) {
 		archivetext = archivetext.replace(/<br\s*\/>\s*{{SPIpriorcases}}/gi, '\n{{SPIpriorcases}}'); // fmt fix whenever needed.
 	}
 	archivetext += '\n' + newarchivetext;
-	await spiHelper_editPage(spiHelper_getArchiveName(), archivetext, 'Archiving case section from [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]', false, spiHelper_settings.watchArchive);
+	await spiHelper_editPage(spiHelper_getArchiveName(), archivetext, 'Archiving case section from [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
+		false, spiHelper_settings.watchArchive, spiHelper_settings.watchArchiveExpiry);
 }
 
 /**
@@ -1510,9 +1518,11 @@ async function spiHelper_moveCaseSection(target, sectionId) {
 	targetPageText += '\n' + sectionText;
 
 	// Intentionally not async - doesn't matter when this edit finishes
-	spiHelper_editPage(newPageName, targetPageText, 'Moving case section from [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']], see page history for attribution', false, spiHelper_settings.watchCase);
+	spiHelper_editPage(newPageName, targetPageText, 'Moving case section from [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']], see page history for attribution',
+		false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry);
 	// Blank the section we moved
-	await spiHelper_editPage(spiHelper_pageName, '', 'Moving case section to [[' + spiHelper_getInterwikiPrefix() + newPageName + ']]', false, spiHelper_settings.watchCase, spiHelper_startingRevID, sectionId);
+	await spiHelper_editPage(spiHelper_pageName, '', 'Moving case section to [[' + spiHelper_getInterwikiPrefix() + newPageName + ']]',
+		false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, sectionId);
 	// Update to the latest revision ID
 	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 }
@@ -1740,11 +1750,13 @@ async function spiHelper_getPageText(title, show, sectionId = null) {
  *                             will fail if the page already exists
  * @param {string} watch What watchlist setting to use when editing - decides
  *                       whether the edited page will be watched
+ * @param {string} watchExpiry Duration to watch the edited page, if unset
+ *                             defaults to 'indefinite'
  * @param {?number} baseRevId Base revision ID, used to detect edit conflicts. If null,
  *                           we'll grab the current page ID.
  * @param {?number} [sectionId=null] Section to edit - if null, edits the whole page
  */
-async function spiHelper_editPage(title, newtext, summary, createonly, watch, baseRevId = null, sectionId = null) {
+async function spiHelper_editPage(title, newtext, summary, createonly, watch, watchExpiry = null, baseRevId = null, sectionId = null) {
 	const $statusLine = $('<li>').appendTo($('#spiHelper_status', document));
 	const $link = $('<a>').attr('href', mw.util.getUrl(title)).attr('title', title).text(title);
 
@@ -1767,6 +1779,9 @@ async function spiHelper_editPage(title, newtext, summary, createonly, watch, ba
 	};
 	if (sectionId) {
 		request.section = sectionId;
+	}
+	if (watchExpiry) {
+		request.watchlistExpiry = watchExpiry;
 	}
 	try {
 		await api.postWithToken('csrf', request);
@@ -1853,12 +1868,17 @@ async function spiHelper_purgePage(title) {
  * @param {boolean} talkpage Whether to revoke talkpage access
  * @param {boolean} email Whether to block email
  * @param {boolean} watchBlockedUser Watchlist setting for whether to watch the newly-blocked user
- *
+ * @param {string} watchExpiry Duration to watch the blocked user, if unset
+ *                             defaults to 'indefinite'
+
  * @return {Promise<boolean>} True if the block suceeded, false if not
  */
 async function spiHelper_blockUser(user, duration, reason, reblock, anononly, accountcreation,
-	autoblock, talkpage, email, watchBlockedUser) {
+	autoblock, talkpage, email, watchBlockedUser, watchExpiry) {
 	'use strict';
+	if (!watchExpiry) {
+		watchExpiry = 'indefinite';
+	}
 	const userPage = 'User:' + user;
 	const $statusLine = $('<li>').appendTo($('#spiHelper_status', document));
 	const $link = $('<a>').attr('href', mw.util.getUrl(userPage)).attr('title', userPage).text(user);
@@ -1878,6 +1898,7 @@ async function spiHelper_blockUser(user, duration, reason, reblock, anononly, ac
 			allowusertalk: !talkpage,
 			noemail: email,
 			watchuser: watchBlockedUser,
+			watchlistexpiry: watchExpiry,
 			user: user
 		});
 		$statusLine.html('Blocked ' + $link.prop('outerHTML'));
