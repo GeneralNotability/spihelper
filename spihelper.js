@@ -461,7 +461,7 @@ async function spiHelper_generateForm() {
 			else {
 				selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false });
 			}
-			selectOpts.push({ label: 'Request more information', value: 'cumoreinfo', selected: false });
+			selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false });
 		}
 		// This is mostly a CU function, but let's let clerks and admins set it
 		//  in case the CU forgot (or in case we're un-closing))
