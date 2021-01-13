@@ -437,6 +437,9 @@ async function spiHelper_generateForm() {
 		if (spiHelper_isCheckuser()) {
 			selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false });
 		}
+		if (spiHelper_isClerk() || spiHelper_isAdmin()) {
+			selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false });
+		}
 		if (canAddCURequest) {
 			// Statuses only available if the case could be moved to "CU requested"
 			selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false });
@@ -445,9 +448,6 @@ async function spiHelper_generateForm() {
 			}
 			if (spiHelper_isCheckuser()) {
 				selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false });
-			}
-			if (spiHelper_isClerk() || spiHelper_isAdmin()) {
-				selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false });
 			}
 		}
 		// CU already requested
