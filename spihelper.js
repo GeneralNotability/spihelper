@@ -437,17 +437,14 @@ async function spiHelper_generateForm() {
 		if (spiHelper_isCheckuser()) {
 			selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false });
 		}
+		if (spiHelper_isClerk() || spiHelper_isAdmin()) {
+			selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false });
+		}
 		if (canAddCURequest) {
 			// Statuses only available if the case could be moved to "CU requested"
 			selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false });
 			if (spiHelper_isClerk()) {
 				selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false });
-			}
-			if (spiHelper_isCheckuser()) {
-				selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false });
-			}
-			if (spiHelper_isClerk() || spiHelper_isAdmin()) {
-				selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false });
 			}
 		}
 		// CU already requested
@@ -456,12 +453,15 @@ async function spiHelper_generateForm() {
 			selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false });
 			// Switch the decline option depending on whether the user is a checkuser
 			if (spiHelper_isCheckuser()) {
+				selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false });
+			}
+			if (spiHelper_isCheckuser()) {
 				selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false });
 			}
 			else {
 				selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false });
 			}
-			selectOpts.push({ label: 'Request more information', value: 'cumoreinfo', selected: false });
+			selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false });
 		}
 		// This is mostly a CU function, but let's let clerks and admins set it
 		//  in case the CU forgot (or in case we're un-closing))
