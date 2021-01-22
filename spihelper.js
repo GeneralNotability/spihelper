@@ -1060,7 +1060,7 @@ async function spiHelper_performActions() {
 				} else {
 					// Otherwise, query whether the user is blocked
 					isNotBlocked = await spiHelper_getUserBlockReason(tagEntry.username) ? 'no' : 'yes';
-				} 
+				}
 				if (isMaster) {
 					// Not doing SPI or LTA fields for now - those auto-detect right now
 					// and I'm not sure if setting them to empty would mess that up
@@ -2299,19 +2299,21 @@ function spiHelper_generateSelect(id, options) {
 
 /**
  * Given an HTML element, sets that element's value on all block options
- * For example, checking the 'block all' button will check all per-use 'block' elements
+ * For example, checking the 'block all' button will check all per-user 'block' elements
  *
  * @param {JQuery<HTMLElement>} source The HTML input element that we're matching all selections to
  */
 function spiHelper_setAllBlockOpts(source) {
 	'use strict';
 	for (let i = 1; i <= spiHelper_usercount; i++) {
+		const target = $('#' + source.attr('id') + i);
 		if (source.attr('type') === 'checkbox') {
-			if (!source.prop('disabled')) {
-				$('#' + source.attr('id') + i).prop('checked', source.prop('checked'));
+			// Don't try to set disabled checkboxes
+			if (!target.prop('disabled')) {
+				target.prop('checked', source.prop('checked'));
 			}
 		} else {
-			$('#' + source.attr('id') + i).val(source.val());
+			target.val(source.val());
 		}
 	}
 }
