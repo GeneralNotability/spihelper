@@ -148,7 +148,8 @@ const spiHelper_CU_TEMPLATES = [
 	{ label: 'Inconclusive', selected: false, value: '{{inconclusive}}' },
 	{ label: 'Need behavioral eval', selected: false, value: '{{behav}}' },
 	{ label: 'No sleepers', selected: false, value: '{{nosleepers}}' },
-	{ label: 'Stale', selected: false, value: '{{stale}}' }
+	{ label: 'Stale', selected: false, value: '{{IPstale}}' },
+	{ label: 'No comment (IP)', selected: false, value: '{{ncip}}'}
 ];
 
 /** @type {SelectOption[]} Templates that a clerk or admin might insert */
@@ -176,6 +177,10 @@ const spiHelper_SOCK_SECTION_RE_WITH_NEWLINE = /====\s*Suspected sockpuppets\s*=
 const spiHelper_ADMIN_SECTION_RE = /\s*====\s*<big>Clerk, CheckUser, and\/or patrolling admin comments<\/big>\s*====\s*/i;
 
 const spiHelper_CU_BLOCK_RE = /{{(checkuserblock(-account|-wide)?|checkuser block)}}/i;
+
+const spiHelper_ARCHIVENOTICE_RE = /{{\s*SPI\s*archive notice\|.*}}/i;
+
+const spiHelper_PRIORCASES_RE = /{{spipriorcases}}/i;
 
 // regex to remove hidden characters from form inputs - they mess up some things,
 // especially mw.util.isIP
@@ -1329,7 +1334,7 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 
 	// The new case's archivenotice should be updated with the new name
 	let newPageText = await spiHelper_getPageText(spiHelper_pageName, true);
-	newPageText = newPageText.replace(/{{\s*SPI\s*archive notice\|.*}}/i, '{{SPIarchive notice|' + spiHelper_caseName + '}}');
+	newPageText = newPageText.replace(spiHelper_ARCHIVENOTICE_RE, '{{SPIarchive notice|' + spiHelper_caseName + '}}');
 	// We also want to add the previous master to the sock list
 	// We use SOCK_SECTION_RE_WITH_NEWLINE to clean up any extraneous whitespace
 	newPageText = newPageText.replace(spiHelper_SOCK_SECTION_RE_WITH_NEWLINE, '====Suspected sockpuppets====' +
@@ -1358,8 +1363,8 @@ async function spiHelper_postMergeCleanup(originalText) {
 	let newText = await spiHelper_getPageText(spiHelper_pageName, false);
 	// Remove the SPI header templates from the page
 	newText = newText.replace(/\n*<noinclude>__TOC__.*\n/ig, '');
-	newText = newText.replace(/{{spi\s*archive.*\n/ig, '');
-	newText = newText.replace(/{{spiprior.*\n/ig, '');
+	newText = newText.replace(spiHelper_ARCHIVENOTICE_RE, '');
+	newText = newText.replace(spiHelper_PRIORCASES_RE, '');
 	newText = originalText + '\n' + newText;
 
 	// Write the updated case
@@ -1474,14 +1479,42 @@ async function spiHelper_moveCase(target) {
 	}
 	// Housekeeping to update all of the var names following the rename
 	const oldPageName = spiHelper_pageName;
+	const oldArchiveName = spiHelper_getArchiveName();
 	spiHelper_caseName = target;
 	spiHelper_pageName = newPageName;
+	let archivesCopied = false;
 	if (targetPageText) {
 		// There's already a page there, we're going to merge
+		// First, check if there's an archive; if so, copy its text over
+		const newArchiveName = spiHelper_getArchiveName().replace(spiHelper_caseName, target);
+		let sourceArchiveText = await spiHelper_getPageText(oldArchiveName, false);
+		let targetArchiveText = await spiHelper_getPageText(newArchiveName, false);
+		if (sourceArchiveText && targetArchiveText) {
+			$('<li>')
+			.append($('<div>').text('Archive detected on both source and target cases, manually copying archive.'))
+			.appendTo($('#spiHelper_status', document));
+
+			// Normalize the source archive text
+			sourceArchiveText = sourceArchiveText.replace(/^\s*__TOC__\s*$\n/gm, '');
+			sourceArchiveText = sourceArchiveText.replace(spiHelper_ARCHIVENOTICE_RE, '');
+			sourceArchiveText = sourceArchiveText.replace(spiHelper_PRIORCASES_RE, '');
+			// Strip leading newlines
+			sourceArchiveText = sourceArchiveText.replace(/^\n*/, '');
+			targetArchiveText += '\n' + sourceArchiveText;
+			await spiHelper_editPage(newArchiveName, targetArchiveText, 'Copying archives from [[' + spiHelper_getInterwikiPrefix() + oldArchiveName + ']], see page history for attribution',
+				false, spiHelper_settings.watchArchive, spiHelper_settings.watchArchiveExpiry);
+			await spiHelper_deletePage(oldArchiveName, 'Deleting copied archive');
+			archivesCopied = true;
+		}
 		// Ignore warnings on the move, we're going to get one since we're stomping an existing page
 		await spiHelper_deletePage(spiHelper_pageName, 'Deleting as part of case merge');
 		await spiHelper_movePage(oldPageName, spiHelper_pageName, 'Merging case to [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]', true);
 		await spiHelper_undeletePage(spiHelper_pageName, 'Restoring page history after merge');
+		if (archivesCopied) {
+			// Create a redirect
+			spiHelper_editPage(oldArchiveName, '#REDIRECT [[' + newArchiveName + ']]', 'Redirecting old archive to new archive',
+				false, spiHelper_settings.watchArchive, spiHelper_settings.watchArchiveExpiry);
+		}
 	} else {
 		await spiHelper_movePage(oldPageName, spiHelper_pageName, 'Moving case to [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]', false);
 	}
@@ -1490,6 +1523,9 @@ async function spiHelper_moveCase(target) {
 	if (targetPageText) {
 		// If there was a page there before, also need to do post-merge cleanup
 		await spiHelper_postMergeCleanup(targetPageText);
+	}
+	if (archivesCopied) {
+		alert('Archives were merged during the case move, please reorder the archive sections');
 	}
 }
 
