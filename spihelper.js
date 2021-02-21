@@ -2169,8 +2169,9 @@ function spiHelper_generateBlockTableLine(name, defaultblock, id) {
 	$('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
 		.attr('id', 'spiHelper_block_doblock' + id).prop('checked', defaultblock)).appendTo($row);
 	// Block duration (only for admins)
+	const defaultBlockDuration = mw.util.isIPAddress(name, true) ? '1 week' : 'indefinite';
 	$('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'text')
-		.attr('id', 'spiHelper_block_duration' + id).val('indefinite')
+		.attr('id', 'spiHelper_block_duration' + id).val(defaultBlockDuration)
 		.addClass('.spihelper-widthlimit')).appendTo($row);
 	// Account creation blocked (only for admins)
 	$('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
