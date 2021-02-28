@@ -324,7 +324,7 @@ const spiHelper_ACTION_VIEW = `
 				<label for="spiHelper_blocknoticemaster">Add talk page notice when (re)blocking the sockmaster.</label>
 			</li>
 			<li class="spiHelper_adminClass">
-				<input type="checkbox" name="spiHelper_blocknoticesocks" id="spiHelper_blocknoticesocks" />
+				<input type="checkbox" checked="checked" name="spiHelper_blocknoticesocks" id="spiHelper_blocknoticesocks" />
 				<label for="spiHelper_blocknoticesocks">Add talk page notice when blocking socks.</label>
 			</li>
 			<li class="spiHelper_adminClass">
