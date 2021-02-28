@@ -730,7 +730,7 @@ async function spiHelper_performActions() {
 
 					if (masterNotice && $('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
 						noticetype = 'master';
-					} else if (sockNotice && !$('#spiHelper_block_tag' + i, $actionView).val().toString().includes('sock')) {
+					} else if (sockNotice) {
 						noticetype = 'sock';
 					}
 
@@ -898,7 +898,6 @@ async function spiHelper_performActions() {
 
 		let blockedList = '';
 		if (spiHelper_isAdmin()) {
-			const masterNotice = $('#spiHelper_blocknoticemaster', $actionView).prop('checked');
 			spiHelper_blocks.forEach(async (blockEntry) => {
 				const blockReason = await spiHelper_getUserBlockReason(blockEntry.username);
 				if (!spiHelper_isCheckuser() && overrideExisting &&
@@ -946,8 +945,8 @@ async function spiHelper_performActions() {
 					}
 					return;
 				}
-				if (blockedList) {
-					blockedList += ', ';
+				if (this.blockedList) {
+					this.blockedList += ', ';
 				}
 				blockedList += '{{noping|' + blockEntry.username + '}}';
 				
