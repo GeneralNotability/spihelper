@@ -3,7 +3,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.4.0 "Anti-Wikipedianism"
+// v2.4.1 "Anti-Wikipedianism"
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css' );
@@ -190,6 +190,10 @@ const spihelper_ADVERT = ' (using [[:w:en:User:GeneralNotability/spihelper|spihe
 
 // The current wiki's interwiki prefix
 const spiHelper_interwikiPrefix = spiHelper_getInterwikiPrefix();
+
+// Map of active operations (used as a "dirty" flag for beforeunload)
+// Values are strings representing the state - acceptable values are 'running', 'success', 'failed'
+const spiHelper_activeOperations = new Map();
 
 // Actually put the portlets in place if needed
 if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/') &&
@@ -671,6 +675,8 @@ async function spiHelper_generateForm() {
  */
 async function spiHelper_oneClickArchive() {
 	'use strict';
+	spiHelper_activeOperations.set('oneClickArchive', 'running');
+
 	const pagetext = await spiHelper_getPageText(spiHelper_pageName, false);
 	spiHelper_caseSections = await spiHelper_getInvestigationSectionIDs();
 	if (!spiHelper_SECTION_RE.test(pagetext)) {
@@ -685,6 +691,7 @@ async function spiHelper_oneClickArchive() {
 		spiHelper_log(logMessage);
 	}
 	$('#spiHelper_status', document).append($('<li>').text('Done!'));
+	spiHelper_activeOperations.set('oneClickArchive', 'successfuls');
 }
 
 /**
@@ -692,6 +699,7 @@ async function spiHelper_oneClickArchive() {
  */
 async function spiHelper_performActions() {
 	'use strict';
+	spiHelper_activeOperations.set('mainActions', 'running');
 
 	// Again, reduce the search scope
 	const $actionView = $('#spiHelper_actionViewDiv', document);
@@ -945,8 +953,8 @@ async function spiHelper_performActions() {
 					}
 					return;
 				}
-				if (this.blockedList) {
-					this.blockedList += ', ';
+				if (blockedList) {
+					blockedList += ', ';
 				}
 				blockedList += '{{noping|' + blockEntry.username + '}}';
 				
@@ -1293,7 +1301,7 @@ async function spiHelper_performActions() {
 
 	await spiHelper_purgePage(spiHelper_pageName);
 	$('#spiHelper_status', document).append($('<li>').text('Done!'));
-
+	spiHelper_activeOperations.set('mainActions', 'successful');
 }
 
 /**
@@ -1792,6 +1800,11 @@ async function spiHelper_getPageText(title, show, sectionId = null) {
  * @param {?number} [sectionId=null] Section to edit - if null, edits the whole page
  */
 async function spiHelper_editPage(title, newtext, summary, createonly, watch, watchExpiry = null, baseRevId = null, sectionId = null) {
+	let activeOpKey = 'edit_' + title;
+	if (sectionId) {
+		activeOpKey += '_' + sectionId;
+	}
+	spiHelper_activeOperations.set(activeOpKey, 'running');
 	const $statusLine = $('<li>').appendTo($('#spiHelper_status', document));
 	const $link = $('<a>').attr('href', mw.util.getUrl(title)).attr('title', title).text(title);
 
@@ -1821,9 +1834,11 @@ async function spiHelper_editPage(title, newtext, summary, createonly, watch, wa
 	try {
 		await api.postWithToken('csrf', request);
 		$statusLine.html('Saved ' + $link.prop('outerHTML'));
+		spiHelper_activeOperations.set(activeOpKey, 'success');
 	} catch (error) {
 		$statusLine.addClass('spiHelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error);
 		console.error(error);
+		spiHelper_activeOperations.set(activeOpKey, 'failed');
 	}
 }
 /**
@@ -1837,6 +1852,9 @@ async function spiHelper_editPage(title, newtext, summary, createonly, watch, wa
 async function spiHelper_movePage(sourcePage, destPage, summary, ignoreWarnings) {
 	// Move a page from sourcePage to destPage. Not that complicated.
 	'use strict';
+
+	let activeOpKey = 'move_' + sourcePage + '_' + destPage;
+	spiHelper_activeOperations.set(activeOpKey, 'running');
 
 	// Should never be a crosswiki call
 	const api = new mw.Api();
@@ -1858,8 +1876,10 @@ async function spiHelper_movePage(sourcePage, destPage, summary, ignoreWarnings)
 			ignoreWarnings: ignoreWarnings
 		});
 		$statusLine.html('Moved ' + $sourceLink.prop('outerHTML') + ' to ' + $destLink.prop('outerHTML'));
+		spiHelper_activeOperations.set(activeOpKey, 'success');
 	} catch (error) {
 		$statusLine.addClass('spihelper-errortext').html('<b>Failed to move ' + $sourceLink.prop('outerHTML') + ' to ' + $destLink.prop('outerHTML') + '</b>: ' + error);
+		spiHelper_activeOperations.set(activeOpKey, 'failed');
 	}
 }
 
@@ -1911,6 +1931,9 @@ async function spiHelper_purgePage(title) {
 async function spiHelper_blockUser(user, duration, reason, reblock, anononly, accountcreation,
 	autoblock, talkpage, email, watchBlockedUser, watchExpiry) {
 	'use strict';
+	let activeOpKey = 'block_' + user;
+	spiHelper_activeOperations.set(activeOpKey, 'running');
+
 	if (!watchExpiry) {
 		watchExpiry = 'indefinite';
 	}
@@ -1937,9 +1960,11 @@ async function spiHelper_blockUser(user, duration, reason, reblock, anononly, ac
 			user: user
 		});
 		$statusLine.html('Blocked ' + $link.prop('outerHTML'));
+		spiHelper_activeOperations.set(activeOpKey, 'success');
 		return true;
 	} catch (error) {
 		$statusLine.addClass('spihelper-errortext').html('<b>Failed to block ' + $link.prop('outerHTML') + '</b>: ' + error);
+		spiHelper_activeOperations.set(activeOpKey, 'failed');
 		return false;
 	}
 }
@@ -2041,6 +2066,9 @@ async function spiHelper_getPageRev(title) {
 async function spiHelper_deletePage(title, reason) {
 	'use strict';
 
+	let activeOpKey = 'delete_' + title;
+	spiHelper_activeOperations.set(activeOpKey, 'running');
+
 	const $statusLine = $('<li>').appendTo($('#spiHelper_status', document));
 	const $link = $('<a>').attr('href', mw.util.getUrl(title)).attr('title', title).text(title);
 	$statusLine.html('Deleting ' + $link.prop('outerHTML'));
@@ -2053,8 +2081,10 @@ async function spiHelper_deletePage(title, reason) {
 			reason: reason
 		});
 		$statusLine.html('Deleted ' + $link.prop('outerHTML'));
+		spiHelper_activeOperations.set(activeOpKey, 'success');
 	} catch (error) {
 		$statusLine.addClass('spihelper-errortext').html('<b>Failed to delete ' + $link.prop('outerHTML') + '</b>: ' + error);
+		spiHelper_activeOperations.set(activeOpKey, 'failed');
 	}
 }
 
@@ -2066,6 +2096,9 @@ async function spiHelper_deletePage(title, reason) {
  */
 async function spiHelper_undeletePage(title, reason) {
 	'use strict';
+	let activeOpKey = 'undelete_' + title;
+	spiHelper_activeOperations.set(activeOpKey, 'running');
+
 	const $statusLine = $('<li>').appendTo($('#spiHelper_status', document));
 	const $link = $('<a>').attr('href', mw.util.getUrl(title)).attr('title', title).text(title);
 	$statusLine.html('Undeleting ' + $link.prop('outerHTML'));
@@ -2078,8 +2111,10 @@ async function spiHelper_undeletePage(title, reason) {
 			reason: reason
 		});
 		$statusLine.html('Undeleted ' + $link.prop('outerHTML'));
+		spiHelper_activeOperations.set(activeOpKey, 'success');
 	} catch (error) {
 		$statusLine.addClass('spihelper-errortext').html('<b>Failed to undelete ' + $link.prop('outerHTML') + '</b>: ' + error);
+		spiHelper_activeOperations.set(activeOpKey, 'failed');
 	}
 }
 
@@ -2489,6 +2524,18 @@ async function spiHelper_addLink() {
 	window.addEventListener('beforeunload', (e) => {
 		const $actionView = $('#spiHelper_actionViewDiv', document);
 		if ($actionView.length > 0) {
+			e.preventDefault();
+			return true;
+		}
+
+		// Make sure no operations are still in flight
+		let isDirty = false;
+		spiHelper_activeOperations.forEach((value, _0, _1) => {
+			if (value === 'running') {
+				isDirty = true;
+			}
+		});
+		if (isDirty) {
 			e.preventDefault();
 			return true;
 		}
