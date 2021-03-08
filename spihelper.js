@@ -881,10 +881,9 @@ async function spiHelper_performActions() {
 	if (spiHelper_ActionsSelected.Block) {
 		let sockmaster = '';
 		let altmaster = '';
-		let sockcount = 0;
 		let needsAltmaster = false;
 		spiHelper_tags.forEach(async (tagEntry) => {
-			// do not support tagging IPs
+			// we do not support tagging IPs
 			if (mw.util.isIPAddress(tagEntry.username, true)) {
 				// Skip, this is an IP
 				return;
@@ -895,12 +894,11 @@ async function spiHelper_performActions() {
 			if (tagEntry.altmasterTag !== '') {
 				needsAltmaster = true;
 			}
-			sockcount++;
 		});
-		if (sockcount > 0 && sockmaster === '') {
+		if (sockmaster === '') {
 			sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelper_caseName);
 		}
-		if (sockcount > 0 && needsAltmaster) {
+		if (needsAltmaster) {
 			altmaster = prompt('Please enter the name of the alternate sockmaster: ', spiHelper_caseName);
 		}
 
@@ -963,7 +961,7 @@ async function spiHelper_performActions() {
 					return;
 				}
 				// Talk page notice
-				if (sockmaster && blockEntry.tpn) {
+				if (blockEntry.tpn) {
 					let newText = '';
 					const isSock = blockEntry.tpn.includes('sock');
 					if (isSock) {
