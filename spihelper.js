@@ -41,6 +41,14 @@ importScript('User:Timotheus Canens/displaymessage.js');
  * @property {boolean} blocking Whether this account is marked for block as well
  */
 
+ /**
+  * @typedef ParsedArchiveNotice
+  * @type {Object}
+  * @property {string} username Case username
+  * @property {boolean} xwiki Whether the crosswiki flag is set
+  * @property {boolean} deny Whether the deny flag is set
+  */
+
 // Globals
 // User-configurable settings, these are the defaults but will be updated by
 // spiHelper_loadSettings()
@@ -178,7 +186,7 @@ const spiHelper_ADMIN_SECTION_RE = /\s*====\s*<big>Clerk, CheckUser, and\/or pat
 
 const spiHelper_CU_BLOCK_RE = /{{(checkuserblock(-account|-wide)?|checkuser block)}}/i;
 
-const spiHelper_ARCHIVENOTICE_RE = /{{\s*SPI\s*archive notice\|.*}}/i;
+const spiHelper_ARCHIVENOTICE_RE = /{{\s*SPI\s*archive notice\|(?:1=)?([^|]*)(\|.*)?}}/i;
 
 const spiHelper_PRIORCASES_RE = /{{spipriorcases}}/i;
 
@@ -2623,3 +2631,42 @@ function spiHelper_normalizeUsername(username) {
 	return username;
 }
 // </nowiki>
+
+/**
+ * Parse key features from an archivenotice
+ * @param {string} template Template to parse
+ * 
+ * @return {ParsedArchiveNotice} Parsed archivenotice
+ */
+function spiHelper_parseArchiveNotice(template) {
+	const match = spiHelper_ARCHIVENOTICE_RE.exec(template);
+	const username = match[1];
+	let deny = false;
+	let xwiki = false;
+	if (match[2]) {
+		for (const entry of match[2].split('|')) {
+			const splitEntry = entry.split('=');
+			if (splitEntry.length !== 2) {
+				console.error('Malformed archivenotice parameter ' + entry);
+				continue;
+			}
+			const key = splitEntry[0];
+			const val = splitEntry[1];
+			if (val.toLowerCase() !== 'yes') {
+				// Only care if the value is 'yes'
+				continue;
+			}
+			if (key.toLowerCase() === 'deny') {
+				deny = true;
+			} else if (key.toLowerCase() === 'crosswiki') {
+				xwiki = true;
+			}
+		}
+	}
+	/** @type {ParsedArchiveNotice} */
+	return {
+		username: username,
+		deny: deny,
+		xwiki: xwiki
+	};
+}
