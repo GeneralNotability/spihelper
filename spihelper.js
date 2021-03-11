@@ -186,7 +186,7 @@ const spiHelper_ADMIN_SECTION_RE = /\s*====\s*<big>Clerk, CheckUser, and\/or pat
 
 const spiHelper_CU_BLOCK_RE = /{{(checkuserblock(-account|-wide)?|checkuser block)}}/i;
 
-const spiHelper_ARCHIVENOTICE_RE = /{{\s*SPI\s*archive notice\|(?:1=)?([^|]*)(\|.*)?}}/i;
+const spiHelper_ARCHIVENOTICE_RE = /{{\s*SPI\s*archive notice\|(?:1=)?([^|]*?)(\|.*)?}}/i;
 
 const spiHelper_PRIORCASES_RE = /{{spipriorcases}}/i;
 
