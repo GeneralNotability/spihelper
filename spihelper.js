@@ -100,6 +100,9 @@ let spiHelper_sectionId = null;
 /** @type {?string} Selected section's name (e.g. "10 June 2020") */
 let spiHelper_sectionName = null;
 
+/** @type {ParsedArchiveNotice} */
+let spiHelper_archiveNoticeParams;
+
 /** Map of top-level actions the user has selected */
 const spiHelper_ActionsSelected = {
 	Case_act: false,
@@ -107,7 +110,8 @@ const spiHelper_ActionsSelected = {
 	Note: false,
 	Close: false,
 	Rename: false,
-	Archive: false
+	Archive: false,
+	SpiMgmt: false
 };
 
 /** @type {BlockEntry[]} Requested blocks */
@@ -219,8 +223,12 @@ const spiHelper_TOP_VIEW = `
 	<select id="spiHelper_sectionSelect"/>
 	<ul>
 		<li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
-			<input type="checkbox" checked="checked" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
+			<input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
 			<label for="spiHelper_Case_Action">Change case status</label>
+		</li>
+		<li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly">
+			<input type="checkbox" id="spiHelper_SpiMgmt" />
+			<label for="spiHelper_SpiMgmt">Change SPI options</label>
 		</li>
 		<li id="spiHelper_blockLine" class="spiHelper_adminClerkClass">
 			<input type="checkbox" name="spiHelper_BlockTag" id="spiHelper_BlockTag" />
@@ -253,6 +261,9 @@ const spiHelper_TOP_VIEW = `
 async function spiHelper_init() {
 	'use strict';
 	spiHelper_caseSections = await spiHelper_getInvestigationSectionIDs();
+	
+	// Load archivenotice params
+	spiHelper_archiveNoticeParams = await spiHelper_parseArchiveNotice(spiHelper_pageName);
 
 	// First, insert the template text
 	displayMessage(spiHelper_TOP_VIEW);
@@ -309,6 +320,19 @@ const spiHelper_ACTION_VIEW = `
 		<h4>Changing case status</h4>
 		<label for="spiHelper_CaseAction">New status:</label>
 		<select id="spiHelper_CaseAction"/>
+	</div>
+	<div id="spiHelper_spiMgmtView">
+		<h4>Changing SPI settings</h4>
+		<ul>
+			<li>
+				<input type="checkbox" id="spiHelper_spiMgmt_crosswiki" />
+				<label for="spiHelper_Case_Action">Case is crosswiki</label>
+			</li>
+			<li>
+				<input type="checkbox" id="spiHelper_spiMgmt_deny" />
+				<label for="spiHelper_Case_Action">Socks should not be tagged per DENY</label>
+			</li>
+		</ul>
 	</div>
 	<div id="spiHelper_blockTagView">
 		<h4 id="spiHelper_blockTagHeader">Blocking and tagging socks</h4>
@@ -421,11 +445,12 @@ async function spiHelper_generateForm() {
 	spiHelper_ActionsSelected.Close = $('#spiHelper_Close', $topView).prop('checked');
 	spiHelper_ActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked');
 	spiHelper_ActionsSelected.Archive = $('#spiHelper_Archive', $topView).prop('checked');
+	spiHelper_ActionsSelected.SpiMgmt = $('#spiHelper_SpiMgmt', $topView).prop('checked');
 	const pagetext = await spiHelper_getPageText(spiHelper_pageName, false, spiHelper_sectionId);
 	if (!(spiHelper_ActionsSelected.Case_act ||
 		spiHelper_ActionsSelected.Note || spiHelper_ActionsSelected.Close ||
 		spiHelper_ActionsSelected.Archive || spiHelper_ActionsSelected.Block ||
-		spiHelper_ActionsSelected.Rename)) {
+		spiHelper_ActionsSelected.Rename || spiHelper_ActionsSelected.SpiMgmt)) {
 		displayMessage('');
 		return;
 	}
@@ -511,6 +536,16 @@ async function spiHelper_generateForm() {
 		});
 	} else {
 		$('#spiHelper_actionView', $actionView).hide();
+	}
+
+	if (spiHelper_ActionsSelected.SpiMgmt) {
+		const $xwikiBox = $('#spiHelper_spiMgmt_crosswiki', $actionView);
+		const $denyBox = $('#spiHelper_spiMgmt_deny', $actionView);
+
+		$xwikiBox.prop('checked', spiHelper_archiveNoticeParams.xwiki);
+		$denyBox.prop('checked', spiHelper_archiveNoticeParams.deny);
+	} else {
+		$('#spiHelper_spiMgmtView', $actionView).hide();
 	}
 
 	if (spiHelper_ActionsSelected.Block) {
@@ -729,6 +764,10 @@ async function spiHelper_performActions() {
 	if (spiHelper_ActionsSelected.Case_act) {
 		newCaseStatus = $('#spiHelper_CaseAction', $actionView).val().toString();
 	}
+	if (spiHelper_ActionsSelected.SpiMgmt) {
+		spiHelper_archiveNoticeParams.deny = $('#spiHelper_spiMgmt_deny', $actionView).prop('checked');
+		spiHelper_archiveNoticeParams.xwiki = $('#spiHelper_spiMgmt_crosswiki', $actionView).prop('checked');
+	}
 	if (spiHelper_sectionId) {
 		comment = $('#spiHelper_CommentText', $actionView).val().toString();
 	}
@@ -886,6 +925,18 @@ async function spiHelper_performActions() {
 			logMessage += '\n** changed case status from ' + oldCaseStatus + ' to ' + newCaseStatus;
 		}
 	}
+
+	if (spiHelper_ActionsSelected.SpiMgmt) {
+		let newArchiveNotice = spiHelper_makeNewArchiveNotice(spiHelper_caseName, spiHelper_archiveNoticeParams);
+		sectionText = sectionText.replace(spiHelper_ARCHIVENOTICE_RE, newArchiveNotice);
+		if (editsummary) {
+			editsummary += ', update archivenotice';
+		} else {
+			editsummary = 'Update archivenotice';
+		}
+		logMessage += '\n** Updated archivenotice';
+	}
+
 	if (spiHelper_ActionsSelected.Block) {
 		let sockmaster = '';
 		let altmaster = '';
@@ -2266,6 +2317,8 @@ async function spiHelper_setCheckboxesBySection() {
 	const $commentBox = $('#spiHelper_Comment', $topView);
 	const $moveBox = $('#spiHelper_Move', $topView);
 	const $caseActionBox = $('#spiHelper_Case_Action', $topView);
+	const $spiMgmtBox = $('#spiHelper_SpiMgmt', $topView);
+
 
 	// Start by unchecking everything
 	$archiveBox.prop('checked', false);
@@ -2274,30 +2327,31 @@ async function spiHelper_setCheckboxesBySection() {
 	$commentBox.prop('checked', false);
 	$moveBox.prop('checked', false);
 	$caseActionBox.prop('checked', false);
-	
+	$spiMgmtBox.prop('checked', false);
+
+	// Enable optionally-disabled boxes
+	$closeBox.prop('disabled', false);
+	$archiveBox.prop('disabled', false);
 
 	if (spiHelper_sectionId === null) {
-		// "Block" "Rename" and "Archive" are enabled if we're using the "select all" option
-		$archiveBox.prop('disabled', false);
-		$blockBox.prop('disabled', false);
-		// Force movebox to enabled in case it was disabled in the section view
-		$moveBox.prop('disabled', false);
-
-		// Everything else is disabled
-		$closeBox.prop('disabled', true);
-		$commentBox.prop('disabled', true);
-		$caseActionBox.prop('disabled', true);
-		$('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)');
-
 		// Hide inputs that aren't relevant in the case view
 		$('.spiHelper_singleCaseOnly', $topView).hide();
-
+		// Show inputs only visible in all-case mode
+		$('.spiHelper_allCasesOnly', $topView).show();
+		// Fix the move label		
+		$('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)');
 	} else {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false, spiHelper_sectionId);
 		if (!spiHelper_SECTION_RE.test(sectionText)) {
 			// Nothing to do here.
 			return;
 		}
+		
+		// Unhide single-case options
+		$('.spiHelper_singleCaseOnly', $topView).show();
+		// Hide inputs only visible in all-case mode
+		$('.spiHelper_allCasesOnly', $topView).hide();
+
 		const result = spiHelper_CASESTATUS_RE.exec(sectionText);
 		let casestatus = '';
 		if (result) {
@@ -2310,22 +2364,13 @@ async function spiHelper_setCheckboxesBySection() {
 		}
 
 		const isClosed = spiHelper_CASESTATUS_CLOSED_RE.test(casestatus);
-		$caseActionBox.prop('disabled', false);
-		$archiveBox.prop('disabled', false);
-		$blockBox.prop('disabled', false);
-		$closeBox.prop('disabled', false);
-		$commentBox.prop('disabled', false);
 
 		if (isClosed) {
 			$closeBox.prop('disabled', true);
-			$archiveBox.prop('disabled', false);
 			$archiveBox.prop('checked', true);
 		} else {
 			$archiveBox.prop('disabled', true);
 		}
-
-		// Unhide single-case options
-		$('.spiHelper_singleCaseOnly', $topView).show();
 
 		// Change the label on the rename button
 		$('#spiHelper_moveLabel', $topView).html('Move case section (<span title="You probably want to move the full case, ' +
@@ -2640,12 +2685,13 @@ function spiHelper_normalizeUsername(username) {
 
 /**
  * Parse key features from an archivenotice
- * @param {string} template Template to parse
+ * @param {string} page Page to parse
  * 
- * @return {ParsedArchiveNotice} Parsed archivenotice
+ * @return {Promise<ParsedArchiveNotice>} Parsed archivenotice
  */
-function spiHelper_parseArchiveNotice(template) {
-	const match = spiHelper_ARCHIVENOTICE_RE.exec(template);
+async function spiHelper_parseArchiveNotice(page) {
+	const pagetext = await spiHelper_getPageText(page, false, spiHelper_sectionId);
+	const match = spiHelper_ARCHIVENOTICE_RE.exec(pagetext);
 	const username = match[1];
 	let deny = false;
 	let xwiki = false;
@@ -2676,3 +2722,23 @@ function spiHelper_parseArchiveNotice(template) {
 		xwiki: xwiki
 	};
 }
+
+/**
+ * Helper function to make a new archivenotice
+ * @param {string} username Username
+ * @param {ParsedArchiveNotice} archiveNoticeParams Other archivenotice params
+ * 
+ * @return {string} New archivenotice
+ */
+ function spiHelper_makeNewArchiveNotice(username, archiveNoticeParams) {
+	let notice = '{{SPIarchive notice|1=' + username;
+	if (archiveNoticeParams.xwiki) {
+		notice += '|crosswiki=yes';
+	}
+	if (archiveNoticeParams.deny) {
+		notice += '|deny=yes';
+	}
+	notice += '}}';
+
+	return notice;
+ }
