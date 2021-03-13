@@ -472,6 +472,7 @@ async function spiHelper_generateForm() {
 		}
 		const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus));
 		const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus);
+		const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus);
 		const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudeclin(ed)?)$/i.test(casestatus);
 
 		/** @type {SelectOption[]} Generated array of values for the case status select box */
@@ -507,6 +508,12 @@ async function spiHelper_generateForm() {
 			}
 			else {
 				selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false });
+			}
+			selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false });
+		} else if (cuEndorsed && spiHelper_isCheckuser()) {
+			// Let checkusers decline endorsed cases
+			if (spiHelper_isCheckuser()) {
+				selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false });
 			}
 			selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false });
 		}
@@ -2338,7 +2345,7 @@ async function spiHelper_setCheckboxesBySection() {
 		$('.spiHelper_singleCaseOnly', $topView).hide();
 		// Show inputs only visible in all-case mode
 		$('.spiHelper_allCasesOnly', $topView).show();
-		// Fix the move label		
+		// Fix the move label
 		$('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)');
 	} else {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false, spiHelper_sectionId);
