@@ -218,7 +218,7 @@ const spiHelper_TOP_VIEW = `
 	<h3>Handling SPI case</h3>
 	<select id="spiHelper_sectionSelect"/>
 	<ul>
-		<li id="spiHelper_actionLine">
+		<li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
 			<input type="checkbox" checked="checked" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
 			<label for="spiHelper_Case_Action">Change case status</label>
 		</li>
@@ -226,11 +226,11 @@ const spiHelper_TOP_VIEW = `
 			<input type="checkbox" name="spiHelper_BlockTag" id="spiHelper_BlockTag" />
 			<label for="spiHelper_BlockTag">Block/tag socks</label>
 		</li>
-		<li id="spiHelper_commentLine">
+		<li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly">
 			<input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
 			<label for="spiHelper_Comment">Note/comment</label>
   		</li>
-		<li id="spiHelper_closeLine" class="spiHelper_adminClerkClass">
+		<li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly">
 			<input type="checkbox" name="spiHelper_Close" id="spiHelper_Close")" />
 			<label for="spiHelper_Close">Close case</label>
 		</li>
@@ -2289,6 +2289,9 @@ async function spiHelper_setCheckboxesBySection() {
 		$caseActionBox.prop('disabled', true);
 		$('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)');
 
+		// Hide inputs that aren't relevant in the case view
+		$('.spiHelper_singleCaseOnly', $topView).hide();
+
 	} else {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false, spiHelper_sectionId);
 		if (!spiHelper_SECTION_RE.test(sectionText)) {
@@ -2320,6 +2323,9 @@ async function spiHelper_setCheckboxesBySection() {
 		} else {
 			$archiveBox.prop('disabled', true);
 		}
+
+		// Unhide single-case options
+		$('.spiHelper_singleCaseOnly', $topView).show();
 
 		// Change the label on the rename button
 		$('#spiHelper_moveLabel', $topView).html('Move case section (<span title="You probably want to move the full case, ' +
