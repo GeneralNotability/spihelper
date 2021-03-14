@@ -23,6 +23,15 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Install deploy dependencies
+        run: |
+          pip install pywikibot
+
       # Runs a set of commands using the runners shell
       - name: Run deploy script
         env:
@@ -30,5 +39,4 @@ jobs:
           BOT_PASS: ${{ secrets.BOT_PASS }}
         run: |
           echo "('GeneralNotability', BotPassword('${BOT_NAME}', '${BOT_PASS}')" > user-password.py
-          pip install pywikibot
-          python deploy.py --file spihelper.js --target User:GeneralNotability/spihelper.js --revision-id ${GITHUB_SHA}
+          python3 deploy.py --file spihelper.js --target User:GeneralNotability/spihelper.js --revision-id ${GITHUB_SHA}
