@@ -731,6 +731,7 @@ async function spiHelper_oneClickArchive() {
 	spiHelper_caseSections = await spiHelper_getInvestigationSectionIDs();
 	if (!spiHelper_SECTION_RE.test(pagetext)) {
 		alert('Looks like the page has been archived already.');
+		spiHelper_activeOperations.set('oneClickArchive', 'successful');
 		return;
 	}
 	displayMessage('<ul id="spiHelper_status"/>');
