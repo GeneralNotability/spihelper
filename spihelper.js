@@ -1500,12 +1500,7 @@ async function spiHelper_archiveCaseSection(sectionId) {
 	sectionText = sectionText.replace(spiHelper_CASESTATUS_RE, '');
 	const newarchivetext = sectionText.substring(sectionText.search(spiHelper_SECTION_RE));
 
-	// Blank the section we archived
-	await spiHelper_editPage(spiHelper_pageName, '', 'Archiving case section to [[' + spiHelper_getInterwikiPrefix() + spiHelper_getArchiveName() + ']]',
-		false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, sectionId);
-	// Update to the latest revision ID
-	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
-
+	// Update the archive
 	let archivetext = await spiHelper_getPageText(spiHelper_getArchiveName(), true);
 	if (!archivetext) {
 		archivetext = '__' + 'TOC__\n{{SPIarchive notice|1=' + spiHelper_caseName + '}}\n{{SPIpriorcases}}';
@@ -1513,8 +1508,21 @@ async function spiHelper_archiveCaseSection(sectionId) {
 		archivetext = archivetext.replace(/<br\s*\/>\s*{{SPIpriorcases}}/gi, '\n{{SPIpriorcases}}'); // fmt fix whenever needed.
 	}
 	archivetext += '\n' + newarchivetext;
-	await spiHelper_editPage(spiHelper_getArchiveName(), archivetext, 'Archiving case section from [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
+	const archiveSuccess = await spiHelper_editPage(spiHelper_getArchiveName(), archivetext,
+		'Archiving case section from [[' + spiHelper_getInterwikiPrefix() + spiHelper_pageName + ']]',
 		false, spiHelper_settings.watchArchive, spiHelper_settings.watchArchiveExpiry);
+
+	if (!archiveSuccess) {
+		const $statusLine = $('<li>').appendTo($('#spiHelper_status', document));
+		$statusLine.addClass('spiHelper-errortext').html('<b>Failed to update archive, not removing section from case page</b>');
+		return;
+	}
+		
+	// Blank the section we archived
+	await spiHelper_editPage(spiHelper_pageName, '', 'Archiving case section to [[' + spiHelper_getInterwikiPrefix() + spiHelper_getArchiveName() + ']]',
+	false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, sectionId);
+	// Update to the latest revision ID
+	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 }
 
 /**
@@ -1862,6 +1870,8 @@ async function spiHelper_getPageText(title, show, sectionId = null) {
  * @param {?number} baseRevId Base revision ID, used to detect edit conflicts. If null,
  *                           we'll grab the current page ID.
  * @param {?number} [sectionId=null] Section to edit - if null, edits the whole page
+ * 
+ * @return {Promise<boolean>} Whether the edit was successful
  */
 async function spiHelper_editPage(title, newtext, summary, createonly, watch, watchExpiry = null, baseRevId = null, sectionId = null) {
 	let activeOpKey = 'edit_' + title;
@@ -1899,10 +1909,12 @@ async function spiHelper_editPage(title, newtext, summary, createonly, watch, wa
 		await api.postWithToken('csrf', request);
 		$statusLine.html('Saved ' + $link.prop('outerHTML'));
 		spiHelper_activeOperations.set(activeOpKey, 'success');
+		return true;
 	} catch (error) {
 		$statusLine.addClass('spiHelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error);
 		console.error(error);
 		spiHelper_activeOperations.set(activeOpKey, 'failed');
+		return false;
 	}
 }
 /**
