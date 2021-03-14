@@ -1,0 +1,41 @@
+name: Deploy to Wikipedia (dev branch)
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the develop branch
+  push:
+    branches: [ develop ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Install deploy dependencies
+        run: |
+          pip install pywikibot
+
+      # Runs a set of commands using the runners shell
+      - name: Run deploy script
+        env:
+          BOT_NAME: ${{ secrets.BOT_NAME }}
+          BOT_PASS: ${{ secrets.BOT_PASS }}
+        run: |
+          echo "('GeneralNotability', BotPassword('${BOT_NAME}', '${BOT_PASS}'))" > user-password.py
+          chmod 600 user-password.py
+          python3 deploy.py --file spihelper.js --target User:GeneralNotability/spihelper-dev.js --summary "Deploying revision [$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/${GITHUB_SHA} ${GITHUB_SHA}]"
