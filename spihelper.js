@@ -741,7 +741,7 @@ async function spiHelper_oneClickArchive() {
 		spiHelper_log(logMessage);
 	}
 	$('#spiHelper_status', document).append($('<li>').text('Done!'));
-	spiHelper_activeOperations.set('oneClickArchive', 'successfuls');
+	spiHelper_activeOperations.set('oneClickArchive', 'successful');
 }
 
 /**
@@ -1520,7 +1520,7 @@ async function spiHelper_archiveCaseSection(sectionId) {
 		
 	// Blank the section we archived
 	await spiHelper_editPage(spiHelper_pageName, '', 'Archiving case section to [[' + spiHelper_getInterwikiPrefix() + spiHelper_getArchiveName() + ']]',
-	false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, sectionId);
+		false, spiHelper_settings.watchCase, spiHelper_settings.watchCaseExpiry, spiHelper_startingRevID, sectionId);
 	// Update to the latest revision ID
 	spiHelper_startingRevID = await spiHelper_getPageRev(spiHelper_pageName);
 }
