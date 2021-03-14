@@ -3,7 +3,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.4.1 "Anti-Wikipedianism"
+// v2.5.0 "Ignore all essays"
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css' );
