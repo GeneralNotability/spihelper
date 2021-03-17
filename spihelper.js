@@ -2710,7 +2710,7 @@ function spiHelper_normalizeUsername(username) {
  * @return {Promise<ParsedArchiveNotice>} Parsed archivenotice
  */
 async function spiHelper_parseArchiveNotice(page) {
-	const pagetext = await spiHelper_getPageText(page, false, spiHelper_sectionId);
+	const pagetext = await spiHelper_getPageText(page, false);
 	const match = spiHelper_ARCHIVENOTICE_RE.exec(pagetext);
 	const username = match[1];
 	let deny = false;
