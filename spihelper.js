@@ -1451,10 +1451,19 @@ async function spiHelper_postMergeCleanup(originalText) {
 async function spiHelper_archiveCase() {
 	'use strict';
 	let i = 0;
+	let previousRev = 0;
 	while (i < spiHelper_caseSections.length) {
 		const sectionId = spiHelper_caseSections[i].index;
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false,
 			sectionId);
+
+		const currentRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
+		if (previousRev === currentRev) {
+			// Our previous archive hasn't gone through yet, wait a bit and retry
+			await new Promise(resolve => setTimeout(resolve, 100));
+			continue;
+		}
+		previousRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
 		i++;
 		const result = spiHelper_CASESTATUS_RE.exec(sectionText);
 		if (result === null) {
