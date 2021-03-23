@@ -1458,7 +1458,7 @@ async function spiHelper_archiveCase() {
 			sectionId);
 
 		const currentRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
-		if (previousRev === currentRev) {
+		if (previousRev === currentRev && currentRev !== 0) {
 			// Our previous archive hasn't gone through yet, wait a bit and retry
 			await new Promise(resolve => setTimeout(resolve, 100));
 			continue;
