@@ -2726,6 +2726,10 @@ async function spiHelper_parseArchiveNotice(page) {
 	let xwiki = false;
 	if (match[2]) {
 		for (const entry of match[2].split('|')) {
+			if (!entry) {
+				// split in such a way that it's just a pipe
+				continue;
+			}
 			const splitEntry = entry.split('=');
 			if (splitEntry.length !== 2) {
 				console.error('Malformed archivenotice parameter ' + entry);
