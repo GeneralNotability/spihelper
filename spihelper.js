@@ -1030,7 +1030,11 @@ async function spiHelper_performActions() {
 				// Talk page notice
 				if (blockEntry.tpn) {
 					let newText = '';
-					const isSock = blockEntry.tpn.includes('sock');
+					let isSock = blockEntry.tpn.includes('sock');
+					// Hacky workaround for when we didn't make a master tag
+					if (isSock && blockEntry.username === sockmaster) {
+						isSock = false;
+					}
 					if (isSock) {
 						newText = '== Blocked as a sockpuppet ==\n';
 					} else {
