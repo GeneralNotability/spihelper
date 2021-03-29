@@ -1414,7 +1414,7 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 	// We also want to add the previous master to the sock list
 	// We use SOCK_SECTION_RE_WITH_NEWLINE to clean up any extraneous whitespace
 	newPageText = newPageText.replace(spiHelper_SOCK_SECTION_RE_WITH_NEWLINE, '====Suspected sockpuppets====' +
-		'\n* {{checkuser|' + oldCaseName + '}} ({{clerknote}} original case name)\n');
+		'\n* {{checkuser|1=' + oldCaseName + '}} ({{clerknote}} original case name)\n');
 	// Also remove the new master if they're in the sock list
 	// This RE is kind of ugly. The idea is that we find everything from the level 4 heading
 	// ending with "sockpuppets" to the level 4 heading beginning with <big> and pull the checkuser
@@ -1638,7 +1638,7 @@ async function spiHelper_moveCaseSection(target, sectionId) {
 	// Have to do this transform before concatenating with targetPageText so that the
 	// "originally filed" goes in the correct section
 	sectionText = sectionText.replace(spiHelper_SOCK_SECTION_RE_WITH_NEWLINE, '====Suspected sockpuppets====' +
-	'\n* {{checkuser|' + spiHelper_caseName + '}} ({{clerknote}} originally filed under this user)\n');
+	'\n* {{checkuser|1=' + spiHelper_caseName + '}} ({{clerknote}} originally filed under this user)\n');
 
 	if (targetPageText === '') {
 		// Pre-load the split target with the SPI templates if it's empty
