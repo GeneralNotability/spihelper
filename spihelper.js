@@ -1461,13 +1461,16 @@ async function spiHelper_archiveCase() {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false,
 			sectionId);
 
-		const currentRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
+		const currentRev = await spiHelper_getPageRev(spiHelper_pageName);
 		if (previousRev === currentRev && currentRev !== 0) {
 			// Our previous archive hasn't gone through yet, wait a bit and retry
 			await new Promise(resolve => setTimeout(resolve, 100));
+
+			// Re-grab the case sections list since the page may have updated
+			spiHelper_caseSections = await spiHelper_getInvestigationSectionIDs();
 			continue;
 		}
-		previousRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
+		previousRev = await spiHelper_getPageRev(spiHelper_pageName);
 		i++;
 		const result = spiHelper_CASESTATUS_RE.exec(sectionText);
 		if (result === null) {
