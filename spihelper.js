@@ -3,7 +3,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.5.0 "Ignore all essays"
+// v2.5.1 "Ignore all essays"
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css' );
@@ -1030,7 +1030,11 @@ async function spiHelper_performActions() {
 				// Talk page notice
 				if (blockEntry.tpn) {
 					let newText = '';
-					const isSock = blockEntry.tpn.includes('sock');
+					let isSock = blockEntry.tpn.includes('sock');
+					// Hacky workaround for when we didn't make a master tag
+					if (isSock && blockEntry.username === sockmaster) {
+						isSock = false;
+					}
 					if (isSock) {
 						newText = '== Blocked as a sockpuppet ==\n';
 					} else {
@@ -1410,7 +1414,7 @@ async function spiHelper_postRenameCleanup(oldCasePage) {
 	// We also want to add the previous master to the sock list
 	// We use SOCK_SECTION_RE_WITH_NEWLINE to clean up any extraneous whitespace
 	newPageText = newPageText.replace(spiHelper_SOCK_SECTION_RE_WITH_NEWLINE, '====Suspected sockpuppets====' +
-		'\n* {{checkuser|' + oldCaseName + '}} ({{clerknote}} original case name)\n');
+		'\n* {{checkuser|1=' + oldCaseName + '}} ({{clerknote}} original case name)\n');
 	// Also remove the new master if they're in the sock list
 	// This RE is kind of ugly. The idea is that we find everything from the level 4 heading
 	// ending with "sockpuppets" to the level 4 heading beginning with <big> and pull the checkuser
@@ -1451,10 +1455,19 @@ async function spiHelper_postMergeCleanup(originalText) {
 async function spiHelper_archiveCase() {
 	'use strict';
 	let i = 0;
+	let previousRev = 0;
 	while (i < spiHelper_caseSections.length) {
 		const sectionId = spiHelper_caseSections[i].index;
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false,
 			sectionId);
+
+		const currentRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
+		if (previousRev === currentRev && currentRev !== 0) {
+			// Our previous archive hasn't gone through yet, wait a bit and retry
+			await new Promise(resolve => setTimeout(resolve, 100));
+			continue;
+		}
+		previousRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
 		i++;
 		const result = spiHelper_CASESTATUS_RE.exec(sectionText);
 		if (result === null) {
@@ -1625,7 +1638,7 @@ async function spiHelper_moveCaseSection(target, sectionId) {
 	// Have to do this transform before concatenating with targetPageText so that the
 	// "originally filed" goes in the correct section
 	sectionText = sectionText.replace(spiHelper_SOCK_SECTION_RE_WITH_NEWLINE, '====Suspected sockpuppets====' +
-	'\n* {{checkuser|' + spiHelper_caseName + '}} ({{clerknote}} originally filed under this user)\n');
+	'\n* {{checkuser|1=' + spiHelper_caseName + '}} ({{clerknote}} originally filed under this user)\n');
 
 	if (targetPageText === '') {
 		// Pre-load the split target with the SPI templates if it's empty
@@ -2710,13 +2723,17 @@ function spiHelper_normalizeUsername(username) {
  * @return {Promise<ParsedArchiveNotice>} Parsed archivenotice
  */
 async function spiHelper_parseArchiveNotice(page) {
-	const pagetext = await spiHelper_getPageText(page, false, spiHelper_sectionId);
+	const pagetext = await spiHelper_getPageText(page, false);
 	const match = spiHelper_ARCHIVENOTICE_RE.exec(pagetext);
 	const username = match[1];
 	let deny = false;
 	let xwiki = false;
 	if (match[2]) {
 		for (const entry of match[2].split('|')) {
+			if (!entry) {
+				// split in such a way that it's just a pipe
+				continue;
+			}
 			const splitEntry = entry.split('=');
 			if (splitEntry.length !== 2) {
 				console.error('Malformed archivenotice parameter ' + entry);
