@@ -2376,6 +2376,8 @@ async function spiHelper_setCheckboxesBySection() {
 		$('.spiHelper_allCasesOnly', $topView).show();
 		// Fix the move label
 		$('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)');
+		// enable the move box
+		$moveBox.prop('disabled', false);
 	} else {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false, spiHelper_sectionId);
 		if (!spiHelper_SECTION_RE.test(sectionText)) {
