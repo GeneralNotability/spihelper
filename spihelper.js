@@ -3,7 +3,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.5.1 "Ignore all essays"
+// v2.5.2 "Ignore all essays"
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css' );
@@ -1461,13 +1461,16 @@ async function spiHelper_archiveCase() {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false,
 			sectionId);
 
-		const currentRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
+		const currentRev = await spiHelper_getPageRev(spiHelper_pageName);
 		if (previousRev === currentRev && currentRev !== 0) {
 			// Our previous archive hasn't gone through yet, wait a bit and retry
 			await new Promise(resolve => setTimeout(resolve, 100));
+
+			// Re-grab the case sections list since the page may have updated
+			spiHelper_caseSections = await spiHelper_getInvestigationSectionIDs();
 			continue;
 		}
-		previousRev = await spiHelper_getPageRev(spiHelper_getArchiveName());
+		previousRev = await spiHelper_getPageRev(spiHelper_pageName);
 		i++;
 		const result = spiHelper_CASESTATUS_RE.exec(sectionText);
 		if (result === null) {
@@ -2373,6 +2376,8 @@ async function spiHelper_setCheckboxesBySection() {
 		$('.spiHelper_allCasesOnly', $topView).show();
 		// Fix the move label
 		$('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)');
+		// enable the move box
+		$moveBox.prop('disabled', false);
 	} else {
 		const sectionText = await spiHelper_getPageText(spiHelper_pageName, false, spiHelper_sectionId);
 		if (!spiHelper_SECTION_RE.test(sectionText)) {
