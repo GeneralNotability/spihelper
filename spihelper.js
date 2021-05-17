@@ -579,7 +579,7 @@ async function spiHelper_generateForm() {
 				}
 			}
 		}
-		const user_re = /{{\s*(?:user|vandal|IP)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi;
+		const user_re = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi;
 		const userresults = pagetext.match(user_re);
 		if (userresults) {
 			for (let i = 0; i < userresults.length; i++) {
