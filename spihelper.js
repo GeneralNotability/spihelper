@@ -482,6 +482,11 @@ async function spiHelper_generateForm() {
 		if (spiHelper_CASESTATUS_CLOSED_RE.test(casestatus)) {
 			selectOpts.push({ label: 'Reopen', value: 'open', selected: false });
 		}
+		else if (spiHelper_isClerk() && casestatus == "clerk") {
+			// Allow clerks to change the status from clerk to open.
+			// Used when clerk assistance has been given and the case was previously open.
+			selectOpts.push({ label: 'Mark as open', value: 'open', selected: false });
+		}
 		if (spiHelper_isCheckuser()) {
 			selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false });
 		}
