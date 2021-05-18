@@ -480,7 +480,7 @@ async function spiHelper_generateForm() {
 			{ label: 'No action', value: 'noaction', selected: true }
 		];
 		if (spiHelper_CASESTATUS_CLOSED_RE.test(casestatus)) {
-			selectOpts.push({ label: 'Reopen', value: 'open', selected: false });
+			selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false });
 		}
 		else if (spiHelper_isClerk() && casestatus == "clerk") {
 			// Allow clerks to change the status from clerk to open.
@@ -882,8 +882,12 @@ async function spiHelper_performActions() {
 
 		if (spiHelper_ActionsSelected.Case_act && newCaseStatus !== 'noaction') {
 			switch (newCaseStatus) {
-				case 'open':
+				case 'reopen':
+					newCaseStatus = 'open';
 					editsummary = 'Reopening';
+					break;
+				case 'open':
+					editsummary = 'Marking request as open';
 					break;
 				case 'CUrequest':
 					editsummary = 'Adding checkuser request';
