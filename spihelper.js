@@ -484,7 +484,12 @@ async function spiHelper_generateForm() {
 		}
 		else if (spiHelper_isClerk() && casestatus == "clerk") {
 			// Allow clerks to change the status from clerk to open.
-			// Used when clerk assistance has been given and the case was previously open.
+			// Used when clerk assistance has been given and the case previously had the status 'open'.
+			selectOpts.push({ label: 'Mark as open', value: 'open', selected: false });
+		}
+		else if (spiHelper_isAdmin() && casestatus == "admin") {
+			// Allow admins to change the status to open from admin
+			// Used when admin assistance has been given to the non-admin clerk and the case previously had the status 'open'.
 			selectOpts.push({ label: 'Mark as open', value: 'open', selected: false });
 		}
 		if (spiHelper_isCheckuser()) {
