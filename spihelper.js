@@ -221,6 +221,7 @@ const spiHelper_TOP_VIEW = `
 <div id="spiHelper_topViewDiv">
 	<h3>Handling SPI case</h3>
 	<select id="spiHelper_sectionSelect"/>
+	<h4 id="spiHelper_warning" class="spiHelper-errortext" hidden></h4>
 	<ul>
 		<li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
 			<input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
@@ -2361,6 +2362,9 @@ async function spiHelper_setCheckboxesBySection() {
 		spiHelper_sectionName = spiHelper_caseSections[$sectionSelect.prop('selectedIndex')].line;
 	}
 
+	const $warningText = $('#spiHelper_warning', $topView);
+	$warningText.hide();
+
 	const $archiveBox = $('#spiHelper_Archive', $topView);
 	const $blockBox = $('#spiHelper_BlockTag', $topView);
 	const $closeBox = $('#spiHelper_Close', $topView);
@@ -2408,6 +2412,9 @@ async function spiHelper_setCheckboxesBySection() {
 		let casestatus = '';
 		if (result) {
 			casestatus = result[1];
+		} else {
+			$warningText.text(`Can't find case status in ${spiHelper_sectionName}!`);
+			$warningText.show();
 		}
 
 		// Disable the section move setting if you haven't opted into it
