@@ -3,7 +3,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.5.2 "Ignore all essays"
+// v2.5.3 "Ignore all essays"
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css' );
@@ -480,7 +480,17 @@ async function spiHelper_generateForm() {
 			{ label: 'No action', value: 'noaction', selected: true }
 		];
 		if (spiHelper_CASESTATUS_CLOSED_RE.test(casestatus)) {
-			selectOpts.push({ label: 'Reopen', value: 'open', selected: false });
+			selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false });
+		}
+		else if (spiHelper_isClerk() && casestatus == "clerk") {
+			// Allow clerks to change the status from clerk to open.
+			// Used when clerk assistance has been given and the case previously had the status 'open'.
+			selectOpts.push({ label: 'Mark as open', value: 'open', selected: false });
+		}
+		else if (spiHelper_isAdmin() && casestatus == "admin") {
+			// Allow admins to change the status to open from admin
+			// Used when admin assistance has been given to the non-admin clerk and the case previously had the status 'open'.
+			selectOpts.push({ label: 'Mark as open', value: 'open', selected: false });
 		}
 		if (spiHelper_isCheckuser()) {
 			selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false });
@@ -579,7 +589,7 @@ async function spiHelper_generateForm() {
 				}
 			}
 		}
-		const user_re = /{{\s*(?:user|vandal|IP)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi;
+		const user_re = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi;
 		const userresults = pagetext.match(user_re);
 		if (userresults) {
 			for (let i = 0; i < userresults.length; i++) {
@@ -877,8 +887,12 @@ async function spiHelper_performActions() {
 
 		if (spiHelper_ActionsSelected.Case_act && newCaseStatus !== 'noaction') {
 			switch (newCaseStatus) {
-				case 'open':
+				case 'reopen':
+					newCaseStatus = 'open';
 					editsummary = 'Reopening';
+					break;
+				case 'open':
+					editsummary = 'Marking request as open';
 					break;
 				case 'CUrequest':
 					editsummary = 'Adding checkuser request';
