@@ -28,7 +28,7 @@ jobs:
 
       - name: Install deploy dependencies
         run: |
-          pip install pywikibot
+          pip install mwparserfromhell>=0.5.0 pywikibot
 
       # Runs a set of commands using the runners shell
       - name: Run deploy script
