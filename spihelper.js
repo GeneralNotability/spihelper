@@ -2625,7 +2625,7 @@ async function spiHelper_addLink() {
 	});
 	if (mw.config.get('wgCategories').includes('SPI cases awaiting archive') && spiHelper_isClerk()) {
 		const oneClickArchiveLink = mw.util.addPortletLink('p-cactions', '#', 'SPI-Archive', 'ca-spiHelperArchive');
-		oneClickArchiveLink.addEventListener('click', (e) => {
+		$(oneClickArchiveLink).one('click', (e) => {
 			e.preventDefault();
 			return spiHelper_oneClickArchive();
 		});
