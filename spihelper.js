@@ -1509,6 +1509,7 @@ async function spiHelper_archiveCase() {
 				}
 				const newArchiveName = spiHelper_getArchiveName() + '/' + archiveId;
 				await spiHelper_movePage(spiHelper_getArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false);
+				await spiHelper_editPage(spiHelper_getArchiveName(), '', 'Removing redirect', false, 'nochange');
 			}
 			// Need an await here - if we have multiple sections archiving we don't want
 			// to stomp on each other
