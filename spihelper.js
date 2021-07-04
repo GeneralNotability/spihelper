@@ -1417,7 +1417,7 @@ async function spiHelper_log(logString) {
  */
 async function spiHelper_postRenameCleanup(oldCasePage) {
 	'use strict';
-	const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelper_makeNewArchiveNotice + '\n{{SPIpriorcases}}';
+	const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelper_makeNewArchiveNotice(spiHelper_caseName, spiHelper_archiveNoticeParams) + '\n{{SPIpriorcases}}';
 	const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '');
 
 	// The old case should just be the archivenotice template and point to the new case
