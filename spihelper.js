@@ -221,6 +221,7 @@ const spiHelper_TOP_VIEW = `
 <div id="spiHelper_topViewDiv">
 	<h3>Handling SPI case</h3>
 	<select id="spiHelper_sectionSelect"/>
+	<h4 id="spiHelper_warning" class="spiHelper-errortext" hidden></h4>
 	<ul>
 		<li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
 			<input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
@@ -1416,7 +1417,7 @@ async function spiHelper_log(logString) {
  */
 async function spiHelper_postRenameCleanup(oldCasePage) {
 	'use strict';
-	const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n{{SPIarchive notice|' + spiHelper_caseName + '}}\n{{SPIpriorcases}}';
+	const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelper_makeNewArchiveNotice(spiHelper_caseName, spiHelper_archiveNoticeParams) + '\n{{SPIpriorcases}}';
 	const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '');
 
 	// The old case should just be the archivenotice template and point to the new case
@@ -1508,6 +1509,7 @@ async function spiHelper_archiveCase() {
 				}
 				const newArchiveName = spiHelper_getArchiveName() + '/' + archiveId;
 				await spiHelper_movePage(spiHelper_getArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false);
+				await spiHelper_editPage(spiHelper_getArchiveName(), '', 'Removing redirect', false, 'nochange');
 			}
 			// Need an await here - if we have multiple sections archiving we don't want
 			// to stomp on each other
@@ -2361,6 +2363,9 @@ async function spiHelper_setCheckboxesBySection() {
 		spiHelper_sectionName = spiHelper_caseSections[$sectionSelect.prop('selectedIndex')].line;
 	}
 
+	const $warningText = $('#spiHelper_warning', $topView);
+	$warningText.hide();
+
 	const $archiveBox = $('#spiHelper_Archive', $topView);
 	const $blockBox = $('#spiHelper_BlockTag', $topView);
 	const $closeBox = $('#spiHelper_Close', $topView);
@@ -2408,6 +2413,9 @@ async function spiHelper_setCheckboxesBySection() {
 		let casestatus = '';
 		if (result) {
 			casestatus = result[1];
+		} else {
+			$warningText.text(`Can't find case status in ${spiHelper_sectionName}!`);
+			$warningText.show();
 		}
 
 		// Disable the section move setting if you haven't opted into it
@@ -2625,7 +2633,7 @@ async function spiHelper_addLink() {
 	});
 	if (mw.config.get('wgCategories').includes('SPI cases awaiting archive') && spiHelper_isClerk()) {
 		const oneClickArchiveLink = mw.util.addPortletLink('p-cactions', '#', 'SPI-Archive', 'ca-spiHelperArchive');
-		oneClickArchiveLink.addEventListener('click', (e) => {
+		$(oneClickArchiveLink).one('click', (e) => {
 			e.preventDefault();
 			return spiHelper_oneClickArchive();
 		});
