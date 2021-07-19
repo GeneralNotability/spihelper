@@ -1283,9 +1283,9 @@ async function spiHelper_performActions() {
 				// Parts of this code were adapted from https://github.com/Xi-Plus/twinkle-global
 				let lockTemplate = '';
 				if (matchCount === 1) {
-					lockTemplate = '{{LockHide' + templateContent + '}}';
+					lockTemplate = '* {{LockHide' + templateContent + '}}';
 				} else {
-					lockTemplate = '{{MultiLock' + templateContent + '}}';
+					lockTemplate = '* {{MultiLock' + templateContent + '}}';
 				}
 				if (!sockmaster) {
 					sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelper_caseName);
