@@ -70,6 +70,8 @@ const spiHelper_settings = {
 	clerk: true,
 	// Log all actions to Special:MyPage/spihelper_log
 	log: false,
+	// Reverse said log, so that the newest actions are at the top.
+	reversed_log: false,
 	// Enable the "move section" button
 	iUnderstandSectionMoves: false,
 	// These are for debugging to view as other roles. If you're picking apart the code and
@@ -1401,12 +1403,25 @@ async function spiHelper_log(logString) {
 		now.toLocaleString('en', { year: 'numeric' });
 	const dateHeader = '==\\s*' + dateString + '\\s*==';
 	const dateHeaderRe = new RegExp(dateHeader, 'i');
+	const dateHeaderReWithAnyDate = new RegExp('==.*?==', 'i');
 
 	let logPageText = await spiHelper_getPageText('User:' + mw.config.get('wgUserName') + '/spihelper_log', false);
 	if (!logPageText.match(dateHeaderRe)) {
-		logPageText += '\n== ' + dateString + ' ==';
+		if (spiHelper_settings.reversed_log) {
+			firstHeaderMatch = logPageText.match(dateHeaderReWithAnyDate);
+			logPageText = logPageText.substring(0, firstHeaderMatch.index) + '== ' + dateString + ' ==\n' + logPageText.substring(firstHeaderMatch.index);
+		}
+		else {
+			logPageText += '\n== ' + dateString + ' ==';
+		}
 	}
-	logPageText += '\n' + logString;
+	if (spiHelper_settings.reversed_log) {
+		firstHeaderMatch = logPageText.match(dateHeaderReWithAnyDate);
+		logPageText = logPageText.substring(0, firstHeaderMatch.index + firstHeaderMatch[0].length) + '\n' + logString + logPageText.substring(firstHeaderMatch.index + firstHeaderMatch[0].length);
+	}
+	else {
+		logPageText += '\n' + logString;
+	}
 	await spiHelper_editPage('User:' + mw.config.get('wgUserName') + '/spihelper_log', logPageText, 'Logging spihelper edits', false, 'nochange');
 }
 
