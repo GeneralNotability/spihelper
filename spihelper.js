@@ -188,7 +188,7 @@ const spiHelper_CLERKSTATUS_RE = /{{(CURequest|awaitingadmin|clerk ?request|(?:s
 
 const spiHelper_SOCK_SECTION_RE_WITH_NEWLINE = /====\s*Suspected sockpuppets\s*====\n*/i;
 
-const spiHelper_ADMIN_SECTION_RE = /\s*====\s*<big>Clerk, CheckUser, and\/or patrolling admin comments<\/big>\s*====\s*/i;
+const spiHelper_ADMIN_SECTION_RE_WITH_PRECEDING_NEWLINES = /\n*\s*====\s*<big>Clerk, CheckUser, and\/or patrolling admin comments<\/big>\s*====\s*/i;
 
 const spiHelper_CU_BLOCK_RE = /{{(checkuserblock(-account|-wide)?|checkuser block)}}/i;
 
@@ -1324,9 +1324,9 @@ async function spiHelper_performActions() {
 			// Complicated regex to find the first regex in the admin section
 			// The weird (\n|.) is because we can't use /s (dot matches newline) regex mode without ES9,
 			// I don't want to go there yet
-			sectionText = sectionText.replace(/----(?!(\n|.)*----)/, comment + '\n----');
+			sectionText = sectionText.replace(/\n*----(?!(\n|.)*----)/, '\n' + comment + '\n----');
 		} else { // Everyone else posts in the "other users" section
-			sectionText = sectionText.replace(spiHelper_ADMIN_SECTION_RE,
+			sectionText = sectionText.replace(spiHelper_ADMIN_SECTION_RE_WITH_PRECEDING_NEWLINES,
 				'\n' + comment + '\n====<big>Clerk, CheckUser, and/or patrolling admin comments</big>====\n');
 		}
 		if (editsummary) {
