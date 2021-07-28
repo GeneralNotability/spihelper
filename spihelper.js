@@ -982,10 +982,10 @@ async function spiHelper_performActions() {
 			}
 		});
 		if (sockmaster === '') {
-			sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelper_caseName);
+			sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelper_caseName) || spiHelper_caseName;
 		}
 		if (needsAltmaster) {
-			altmaster = prompt('Please enter the name of the alternate sockmaster: ', spiHelper_caseName);
+			altmaster = prompt('Please enter the name of the alternate sockmaster: ', spiHelper_caseName) || spiHelper_caseName;
 		}
 
 		let blockedList = '';
@@ -1292,9 +1292,9 @@ async function spiHelper_performActions() {
 					lockTemplate = '* {{MultiLock' + templateContent + '}}';
 				}
 				if (!sockmaster) {
-					sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelper_caseName);
+					sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelper_caseName) || spiHelper_caseName;
 				}
-				const lockComment = prompt('Please enter a comment for the global lock request (optional):', '');
+				const lockComment = prompt('Please enter a comment for the global lock request (optional):', '') || '';
 				const heading = hideLockNames ? 'sockpuppet(s)' : '[[Special:CentralAuth/' + sockmaster + '|' + sockmaster + ']] sock(s)';
 				let message = '=== Global lock for ' + heading + ' ===';
 				message += '\n{{status}}';
