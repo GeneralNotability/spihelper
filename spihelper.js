@@ -399,7 +399,7 @@ const spiHelper_ACTION_VIEW = `
 				<td><select id="spiHelper_block_tag_altmaster"/></td>
 	
 				<td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
-				<td><input type="button" id="moreSerks" value="+" onclick="spiHelper_generateBlockTableLine('', true);"/></td>
+				<td><input type="button" id="moreSerks" value="+" onclick="spiHelper_addBlankUserLine();"/></td>
 			</tr>
 		</table>
 	</div>
@@ -2807,4 +2807,14 @@ async function spiHelper_parseArchiveNotice(page) {
 	notice += '}}';
 
 	return notice;
+ }
+
+/**
+ * Function to add a blank user line to the block table
+ * 
+ * @return {void}
+ */
+ function spiHelper_addBlankUserLine() {
+ 	spiHelper_usercount++;
+ 	spiHelper_generateBlockTableLine('', true, spiHelper_usercount);
  }
