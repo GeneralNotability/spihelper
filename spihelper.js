@@ -126,7 +126,7 @@ const spiHelper_tags = [];
 const spiHelper_globalLocks = [];
 
 // Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page)
-let spiHelper_usercount = 0;
+let spiHelper_userCount = 0;
 const spiHelper_SECTION_RE = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m;
 
 /** @type {SelectOption[]} List of possible selections for tagging a user in the block/tag interface
@@ -442,7 +442,7 @@ const spiHelper_ACTION_VIEW = `
  */
 async function spiHelper_generateForm() {
 	'use strict';
-	spiHelper_usercount = 0;
+	spiHelper_userCount = 0;
 	const $topView = $('#spiHelper_topViewDiv', document);
 	spiHelper_ActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked');
 	spiHelper_ActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked');
@@ -643,20 +643,20 @@ async function spiHelper_generateForm() {
 		});
 
 		for (let i = 0; i < likelyusers.length; i++) {
-			spiHelper_usercount++;
-			spiHelper_generateBlockTableLine(likelyusers[i], true, spiHelper_usercount);
+			spiHelper_userCount++;
+			spiHelper_generateBlockTableLine(likelyusers[i], true, spiHelper_userCount);
 		}
 		for (let i = 0; i < likelyips.length; i++) {
-			spiHelper_usercount++;
-			spiHelper_generateBlockTableLine(likelyips[i], true, spiHelper_usercount);
+			spiHelper_userCount++;
+			spiHelper_generateBlockTableLine(likelyips[i], true, spiHelper_userCount);
 		}
 		for (let i = 0; i < possibleusers.length; i++) {
-			spiHelper_usercount++;
-			spiHelper_generateBlockTableLine(possibleusers[i], false, spiHelper_usercount);
+			spiHelper_userCount++;
+			spiHelper_generateBlockTableLine(possibleusers[i], false, spiHelper_userCount);
 		}
 		for (let i = 0; i < possibleips.length; i++) {
-			spiHelper_usercount++;
-			spiHelper_generateBlockTableLine(possibleips[i], false, spiHelper_usercount);
+			spiHelper_userCount++;
+			spiHelper_generateBlockTableLine(possibleips[i], false, spiHelper_userCount);
 		}
 	} else {
 		$('#spiHelper_blockTagView', $actionView).hide();
@@ -802,7 +802,7 @@ async function spiHelper_performActions() {
 		if (spiHelper_isAdmin() && !$('#spiHelper_noblock', $actionView).prop('checked')) {
 			const masterNotice = $('#spiHelper_blocknoticemaster', $actionView).prop('checked');
 			const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked');
-			for (let i = 1; i <= spiHelper_usercount; i++) {
+			for (let i = 1; i <= spiHelper_userCount; i++) {
 				if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
 					let noticetype = '';
 
@@ -839,7 +839,7 @@ async function spiHelper_performActions() {
 				}
 			}
 		} else {
-			for (let i = 1; i <= spiHelper_usercount; i++) {
+			for (let i = 1; i <= spiHelper_userCount; i++) {
 				if ($('#spiHelper_block_tag' + i, $actionView).val() !== '') {
 					const item = {
 						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
@@ -2510,7 +2510,7 @@ function spiHelper_generateSelect(id, options) {
  */
 function spiHelper_setAllBlockOpts(source) {
 	'use strict';
-	for (let i = 1; i <= spiHelper_usercount; i++) {
+	for (let i = 1; i <= spiHelper_userCount; i++) {
 		const target = $('#' + source.attr('id') + i);
 		if (source.attr('type') === 'checkbox') {
 			// Don't try to set disabled checkboxes
@@ -2830,6 +2830,6 @@ async function spiHelper_parseArchiveNotice(page) {
  * @return {void}
  */
  function spiHelper_addBlankUserLine() {
- 	spiHelper_usercount++;
- 	spiHelper_generateBlockTableLine('', true, spiHelper_usercount);
+ 	spiHelper_userCount++;
+ 	spiHelper_generateBlockTableLine('', true, spiHelper_userCount);
  }
