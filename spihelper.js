@@ -401,9 +401,9 @@ const spiHelper_ACTION_VIEW = `
 				<td><select id="spiHelper_block_tag_altmaster"/></td>
 	
 				<td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
-				<td><input type="button" id="moreSerks" value="+" onclick="spiHelper_addBlankUserLine();"/></td>
 			</tr>
 		</table>
+		<span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelper_addBlankUserLine();"/></span>
 	</div>
 	<div id="spiHelper_closeView">
 		<h4>Marking case as closed</h4>
