@@ -804,6 +804,10 @@ async function spiHelper_performActions() {
 			const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked');
 			for (let i = 1; i <= spiHelper_userCount; i++) {
 				if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
+					if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
+						// Skip blank usernames, empty string is falsey
+						continue;
+					}
 					let noticetype = '';
 
 					if (masterNotice && $('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
@@ -829,6 +833,10 @@ async function spiHelper_performActions() {
 					spiHelper_globalLocks.push($('#spiHelper_block_username' + i, $actionView).val().toString());
 				}
 				if ($('#spiHelper_block_tag' + i).val() !== '') {
+					if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
+						// Skip blank entries
+						continue;
+					}
 					const item = {
 						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
 						tag: $('#spiHelper_block_tag' + i, $actionView).val().toString(),
@@ -840,6 +848,10 @@ async function spiHelper_performActions() {
 			}
 		} else {
 			for (let i = 1; i <= spiHelper_userCount; i++) {
+				if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
+					// Skip blank entries
+					continue;
+				}
 				if ($('#spiHelper_block_tag' + i, $actionView).val() !== '') {
 					const item = {
 						username: spiHelper_normalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
