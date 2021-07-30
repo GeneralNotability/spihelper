@@ -1,7 +1,7 @@
 {
   "name": "spihelper",
   "version": "2.5.4",
-  "description": "",
+  "description": "Wikipedia sockpuppet investigation helper",
   "main": "spihelper.js",
   "devDependencies": {
     "eslint": "^7.31.0",
