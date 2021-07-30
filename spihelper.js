@@ -3,6 +3,8 @@
 // GeneralNotability's rewrite of Tim's SPI helper script
 // v2.5.3 "Ignore all essays"
 
+/* global mw, $, importStylesheet, importScript */
+
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper.css')
 importScript('User:Timotheus Canens/displaymessage.js')
