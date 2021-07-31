@@ -1,7 +1,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.5.3 "Ignore all essays"
+// v2.5.4 "Ignore all essays"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
 
@@ -1510,7 +1510,9 @@ async function spiHelperArchiveCase () {
     const currentRev = await spiHelperGetPageRev(spiHelperPageName)
     if (previousRev === currentRev && currentRev !== 0) {
       // Our previous archive hasn't gone through yet, wait a bit and retry
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100)
+      })
 
       // Re-grab the case sections list since the page may have updated
       spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
@@ -1578,7 +1580,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
 
   if (!archiveSuccess) {
     const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-    $statusLine.addClass('spiHelper-errortext').html('<b>Failed to update archive, not removing section from case page</b>')
+    $statusLine.addClass('spiHelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
     return
   }
 
@@ -2523,14 +2525,14 @@ function spiHelperGenerateSelect (id, options) {
 function spiHelperSetAllBlockOpts (source) {
   'use strict'
   for (let i = 1; i <= spiHelperUserCount; i++) {
-    const target = $('#' + source.attr('id') + i)
+    const $target = $('#' + source.attr('id') + i)
     if (source.attr('type') === 'checkbox') {
       // Don't try to set disabled checkboxes
-      if (!target.prop('disabled')) {
-        target.prop('checked', source.prop('checked'))
+      if (!$target.prop('disabled')) {
+        $target.prop('checked', source.prop('checked'))
       }
     } else {
-      target.val(source.val())
+      $target.val(source.val())
     }
   }
 }
