@@ -1567,7 +1567,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
   // Update the archive
   let archivetext = await spiHelperGetPageText(spiHelperGetArchiveName(), true)
   if (!archivetext) {
-    archivetext = '__' + 'TOC__\n{{SPIarchive notice|1=' + spiHelperCaseName + '}}\n{{SPIpriorcases}}'
+    archivetext = '__TOC__\n{{SPIarchive notice|1=' + spiHelperCaseName + '}}\n{{SPIpriorcases}}'
   } else {
     archivetext = archivetext.replace(/<br\s*\/>\s*{{SPIpriorcases}}/gi, '\n{{SPIpriorcases}}') // fmt fix whenever needed.
   }
@@ -2579,7 +2579,7 @@ function spiHelperInsertNote (source) {
   let newText = $textBox.val().toString()
   // Match the start of the line, optionally including a '*' with or without whitespace around it,
   // optionally including a template which contains the string "note"
-  newText = newText.replace(/^(\s*\*\s*)?({{[\w\s]*note[\w\s]*}}\s*)?/i, '* ' + '{{' + source.val() + '}} ')
+  newText = newText.replace(/^(\s*\*\s*)?({{[\w\s]*note[\w\s]*}}\s*)?/i, '* {{' + source.val() + '}} ')
   $textBox.val(newText)
 
   // Force the selected element to reset its selection to 0
