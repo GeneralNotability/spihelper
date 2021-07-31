@@ -387,7 +387,6 @@ const spiHelperActionViewHTML = `
         <th>Tag</th>
         <th><span title="Tag the user with a suspected alternate master" class="rt-commentedText spihelper-hovertext">Alt Master</span></th>
         <th><span title="Request a global lock at Meta:SRG" class="rt-commentedText spihelper-hovertext">Req Lock?</span></th>
-        <th><span title="Add another user" class="rt-commentedText spihelper-hovertext">Add</span></th>
       </tr>
       <tr style="border-bottom:2px solid black">
         <td style="text-align:center;">(All users)</td>
