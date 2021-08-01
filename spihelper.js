@@ -2622,7 +2622,7 @@ function spiHelperCaseActionUpdated (source) {
       newTemplate = '{{Endorse}}'
       break
     case 'cuendorse':
-      newTemplate = '{{cuendorse}}'
+      newTemplate = '{{cu-endorsed}}'
       break
     case 'moreinfo': // Intentional fallthrough
     case 'cumoreinfo':
