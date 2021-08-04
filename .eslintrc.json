@@ -1,0 +1,19 @@
+{
+    "env": {
+        "browser": true,
+        "es2017": true,
+        "jquery": true
+    },
+    "extends": [
+        "standard",
+        "wikimedia/language/es2017",
+        "wikimedia/jquery"
+    ],
+    "parserOptions": {
+        "ecmaVersion": 8
+    },
+    "rules": {
+        "linebreak-style": "off",
+	"semi": ["error", "never"]
+    }
+}

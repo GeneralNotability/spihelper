@@ -1,0 +1,29 @@
+{
+  "name": "spihelper",
+  "version": "2.5.4",
+  "description": "Wikipedia sockpuppet investigation helper",
+  "main": "spihelper.js",
+  "devDependencies": {
+    "eslint": "^7.32.0",
+    "eslint-config-standard": "^16.0.3",
+    "eslint-config-wikimedia": "^0.20.0",
+    "eslint-plugin-es": "^4.1.0",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^5.1.0",
+    "types-mediawiki": "^1.2.0"
+  },
+  "scripts": {
+    "test": "eslint spihelper.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GeneralNotability/spihelper.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GeneralNotability/spihelper/issues"
+  },
+  "homepage": "https://github.com/GeneralNotability/spihelper#readme"
+}
