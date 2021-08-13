@@ -212,7 +212,7 @@ const spiHelperActiveOperations = new Map()
 // Actually put the portlets in place if needed
 if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/') &&
   !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/') &&
-  !mw.config.get('wgPageName').includes('/Archive')) {
+  !mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations\/.*\/Archive.*')) {
   mw.loader.load('mediawiki.user')
   $(spiHelperAddLink)
 }
