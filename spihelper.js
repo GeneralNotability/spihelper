@@ -1372,8 +1372,17 @@ async function spiHelperPerformActions () {
   }
 
   // Make all of the requested edits (synchronous since we might make more changes to the page)
-  await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
+  const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
     spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, spiHelperSectionId)
+  if (!editResult) {
+    // Page edit failed (probably an edit conflict), dump the comment if we had one
+    if (comment && comment !== '*') {
+      $('<li>')
+        .append($('<div>').addClass('spihelper-errortext')
+          .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
+        .appendTo($('#spiHelper_status', document))
+    }
+  }
   // Update to the latest revision ID
   spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
   if (spiHelperActionsSelected.Archive) {
