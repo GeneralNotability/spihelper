@@ -2672,6 +2672,8 @@ async function spiHelperAddLink () {
     const $actionView = $('#spiHelper_actionViewDiv', document)
     if ($actionView.length > 0) {
       e.preventDefault()
+      // for Chrome
+      e.returnValue = ''
       return true
     }
 
@@ -2684,6 +2686,7 @@ async function spiHelperAddLink () {
     })
     if (isDirty) {
       e.preventDefault()
+      e.returnValue = ''
       return true
     }
   })
