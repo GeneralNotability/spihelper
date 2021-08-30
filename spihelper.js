@@ -1314,7 +1314,7 @@ async function spiHelperPerformActions () {
         let message = '=== Global lock for ' + heading + ' ==='
         message += '\n{{status}}'
         message += '\n' + lockTemplate
-        message += '\n* Sockpuppet(s) found in enwiki sockpuppet investigation, see [[' + spiHelperInterwikiPrefix + spiHelperPageName + ']]. ' + lockComment + ' ~~~~'
+        message += '\nSockpuppet(s) found in enwiki sockpuppet investigation, see [[' + spiHelperInterwikiPrefix + spiHelperPageName + ']]. ' + lockComment + ' ~~~~'
 
         // Write lock request to [[meta:Steward requests/Global]]
         let srgText = await spiHelperGetPageText('meta:Steward requests/Global', false)
