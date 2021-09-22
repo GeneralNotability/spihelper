@@ -1,0 +1,8 @@
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Require review for any deployment related changes
+user-config.py @GeneralNotability
+deploy.py @GeneralNotability
+
+# Require review for any workflow related changes
+.github/workflows/ @GeneralNotability
