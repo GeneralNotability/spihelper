@@ -222,7 +222,7 @@ if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/')
 const spiHelperTopViewHTML = `
 <div id="spiHelper_topViewDiv">
   <h3>Handling SPI case</h3>
-  <select id="spiHelper_sectionSelect"/>
+  <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spiHelper-errortext" hidden></h4>
   <ul>
     <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
@@ -322,7 +322,7 @@ const spiHelperActionViewHTML = `
   <div id="spiHelper_actionView">
     <h4>Changing case status</h4>
     <label for="spiHelper_CaseAction">New status:</label>
-    <select id="spiHelper_CaseAction"/>
+    <select id="spiHelper_CaseAction"></select>
   </div>
   <div id="spiHelper_spiMgmtView">
     <h4>Changing SPI settings</h4>
@@ -396,8 +396,8 @@ const spiHelperActionViewHTML = `
         <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_ab" checked="checked"/></td>
         <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_tp"/></td>
         <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_email"/></td>
-        <td><select id="spiHelper_block_tag"/></td>
-        <td><select id="spiHelper_block_tag_altmaster"/></td>
+        <td><select id="spiHelper_block_tag"></select></td>
+        <td><select id="spiHelper_block_tag_altmaster"></select></td>
   
         <td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
       </tr>
@@ -422,9 +422,9 @@ const spiHelperActionViewHTML = `
   <div id="spiHelper_commentView">
     <h4>Comments</h4>
     <span>
-      <select id="spiHelper_noteSelect"/>
-      <select class="spiHelper_adminClerkClass" id="spiHelper_adminSelect"/>
-      <select class="spiHelper_cuClass" id="spiHelper_cuSelect"/>
+      <select id="spiHelper_noteSelect"></select>
+      <select class="spiHelper_adminClerkClass" id="spiHelper_adminSelect"></select>
+      <select class="spiHelper_cuClass" id="spiHelper_cuSelect"></select>
     </span>
     <div>
       <label for="spiHelper_CommentText">Comment:</label>
