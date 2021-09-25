@@ -431,7 +431,7 @@ const spiHelperActionViewHTML = `
       <textarea rows="3" cols="80" id="spiHelper_CommentText">*</textarea>
       <div><a id="spiHelper_previewLink">Preview</a></div>
     </div>
-    <div class="spihelper-previewbox" id="spiHelper_previewBox" hidden/>
+    <div class="spihelper-previewbox" id="spiHelper_previewBox" hidden></div>
   </div>
   <input type="button" id="spiHelper_performActions" value="Done" />
 </div>
