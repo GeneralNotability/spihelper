@@ -1286,11 +1286,11 @@ async function spiHelperPerformActions () {
         if (mw.util.isIPAddress(globalLockEntry, true)) {
           return
         }
-        templateContent += '|' + globalLockEntry
+        templateContent += '|' + (matchCount + 1) + '=' + globalLockEntry
         if (locked) {
           locked += ', '
         }
-        locked += '{{noping|' + globalLockEntry + '}}'
+        locked += '{{noping|1=' + globalLockEntry + '}}'
         matchCount++
       })
 
