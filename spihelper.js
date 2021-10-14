@@ -727,7 +727,7 @@ async function spiHelperGenerateForm () {
   updateForRole()
 }
 
-async function updateForRole() {
+async function updateForRole () {
   const $actionView = $('#spiHelper_actionViewDiv', document)
   // Hide items based on role
   if (!spiHelperIsCheckuser()) {
