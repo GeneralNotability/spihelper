@@ -818,7 +818,10 @@ async function spiHelperPerformActions () {
           }
           let noticetype = ''
 
-          if (masterNotice && $('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master')) {
+          const username = spiHelperNormalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString())
+
+          if (masterNotice && ($('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master') ||
+                spiHelperNormalizeUsername(spiHelperCaseName) === username)) {
             noticetype = 'master'
           } else if (sockNotice) {
             noticetype = 'sock'
@@ -826,7 +829,7 @@ async function spiHelperPerformActions () {
 
           /** @type {BlockEntry} */
           const item = {
-            username: spiHelperNormalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString()),
+            username: username,
             duration: $('#spiHelper_block_duration' + i, $actionView).val().toString(),
             acb: $('#spiHelper_block_acb' + i, $actionView).prop('checked'),
             ab: $('#spiHelper_block_ab' + i, $actionView).prop('checked'),
@@ -1071,7 +1074,7 @@ async function spiHelperPerformActions () {
           let newText = ''
           let isSock = blockEntry.tpn.includes('sock')
           // Hacky workaround for when we didn't make a master tag
-          if (isSock && blockEntry.username === sockmaster) {
+          if (isSock && blockEntry.username === spiHelperNormalizeUsername(sockmaster)) {
             isSock = false
           }
           if (isSock) {
