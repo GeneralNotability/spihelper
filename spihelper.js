@@ -724,6 +724,11 @@ async function spiHelperGenerateForm () {
     spiHelperPerformActions()
   })
 
+  updateForRole()
+}
+
+async function updateForRole() {
+  const $actionView = $('#spiHelper_actionViewDiv', document)
   // Hide items based on role
   if (!spiHelperIsCheckuser()) {
     // Hide CU options from non-CUs
@@ -2861,4 +2866,5 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
 function spiHelperAddBlankUserLine () {
   spiHelperUserCount++
   spiHelperGenerateBlockTableLine('', true, spiHelperUserCount)
+  updateForRole()
 }
