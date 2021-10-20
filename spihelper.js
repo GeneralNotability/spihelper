@@ -47,6 +47,7 @@ importScript('User:Timotheus Canens/displaymessage.js')
   * @property {string} username Case username
   * @property {boolean} xwiki Whether the crosswiki flag is set
   * @property {boolean} deny Whether the deny flag is set
+  * @property {boolean} notalk Whether the notalk flag is set
   */
 
 // Globals
@@ -329,11 +330,15 @@ const spiHelperActionViewHTML = `
     <ul>
       <li>
         <input type="checkbox" id="spiHelper_spiMgmt_crosswiki" />
-        <label for="spiHelper_Case_Action">Case is crosswiki</label>
+        <label for="spiHelper_spiMgmt_crosswiki">Case is crosswiki</label>
       </li>
       <li>
         <input type="checkbox" id="spiHelper_spiMgmt_deny" />
-        <label for="spiHelper_Case_Action">Socks should not be tagged per DENY</label>
+        <label for="spiHelper_spiMgmt_deny">Socks should not be tagged per DENY</label>
+      </li>
+      <li>
+        <input type="checkbox" id="spiHelper_spiMgmt_notalk" />
+        <label for="spiHelper_spiMgmt_notalk">Socks should have talk page and email access revoked due to past abuse</label>
       </li>
     </ul>
   </div>
@@ -565,9 +570,11 @@ async function spiHelperGenerateForm () {
   if (spiHelperActionsSelected.SpiMgmt) {
     const $xwikiBox = $('#spiHelper_spiMgmt_crosswiki', $actionView)
     const $denyBox = $('#spiHelper_spiMgmt_deny', $actionView)
+    const $notalkBox = $('#spiHelper_spiMgmt_notalk', $actionView)
 
     $xwikiBox.prop('checked', spiHelperArchiveNoticeParams.xwiki)
     $denyBox.prop('checked', spiHelperArchiveNoticeParams.deny)
+    $notalkBox.prop('checked', spiHelperArchiveNoticeParams.notalk)
   } else {
     $('#spiHelper_spiMgmtView', $actionView).hide()
   }
@@ -798,6 +805,7 @@ async function spiHelperPerformActions () {
   if (spiHelperActionsSelected.SpiMgmt) {
     spiHelperArchiveNoticeParams.deny = $('#spiHelper_spiMgmt_deny', $actionView).prop('checked')
     spiHelperArchiveNoticeParams.xwiki = $('#spiHelper_spiMgmt_crosswiki', $actionView).prop('checked')
+    spiHelperArchiveNoticeParams.notalk = $('#spiHelper_spiMgmt_notalk', $actionView).prop('checked')
   }
   if (spiHelperSectionId) {
     comment = $('#spiHelper_CommentText', $actionView).val().toString()
@@ -844,6 +852,10 @@ async function spiHelperPerformActions () {
               nem: $('#spiHelper_block_email' + i, $actionView).prop('checked'),
               tpn: noticetype
             }
+          }
+          if (spiHelperArchiveNoticeParams.notalk) {
+            item.ntp = true
+            item.nem = true
           }
 
           spiHelperBlocks.push(item)
@@ -2168,7 +2180,7 @@ async function spiHelperGetUserBlockReason (user) {
  * @param {string} user Username
  * @return {Promise<BlockEntry>} Current block settings for the user, or null if the user is not blocked
 */
-async function spiHelperGetUserBlockSettings(user) {
+async function spiHelperGetUserBlockSettings (user) {
   'use strict'
   // This is not something which should ever be cross-wiki
   const api = new mw.Api()
@@ -2852,6 +2864,7 @@ async function spiHelperParseArchiveNotice (page) {
   const username = match[1]
   let deny = false
   let xwiki = false
+  let notalk = false
   if (match[2]) {
     for (const entry of match[2].split('|')) {
       if (!entry) {
@@ -2873,6 +2886,8 @@ async function spiHelperParseArchiveNotice (page) {
         deny = true
       } else if (key.toLowerCase() === 'crosswiki') {
         xwiki = true
+      } else if (key.toLowerCase() === 'notalk') {
+        notalk = true
       }
     }
   }
@@ -2880,7 +2895,8 @@ async function spiHelperParseArchiveNotice (page) {
   return {
     username: username,
     deny: deny,
-    xwiki: xwiki
+    xwiki: xwiki,
+    notalk: notalk
   }
 }
 
@@ -2898,6 +2914,9 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
   }
   if (archiveNoticeParams.deny) {
     notice += '|deny=yes'
+  }
+  if (archiveNoticeParams.notalk) {
+    notice += '|notalk=yes'
   }
   notice += '}}'
 
