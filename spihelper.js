@@ -827,15 +827,23 @@ async function spiHelperPerformActions () {
             noticetype = 'sock'
           }
 
+          const currentBlock = await spiHelperGetUserBlockSettings(username)
+
           /** @type {BlockEntry} */
-          const item = {
-            username: username,
-            duration: $('#spiHelper_block_duration' + i, $actionView).val().toString(),
-            acb: $('#spiHelper_block_acb' + i, $actionView).prop('checked'),
-            ab: $('#spiHelper_block_ab' + i, $actionView).prop('checked'),
-            ntp: $('#spiHelper_block_tp' + i, $actionView).prop('checked'),
-            nem: $('#spiHelper_block_email' + i, $actionView).prop('checked'),
-            tpn: noticetype
+          let item
+          if (currentBlock) {
+            item = currentBlock
+            item.tpn = noticetype
+          } else {
+            item = {
+              username: username,
+              duration: $('#spiHelper_block_duration' + i, $actionView).val().toString(),
+              acb: $('#spiHelper_block_acb' + i, $actionView).prop('checked'),
+              ab: $('#spiHelper_block_ab' + i, $actionView).prop('checked'),
+              ntp: $('#spiHelper_block_tp' + i, $actionView).prop('checked'),
+              nem: $('#spiHelper_block_email' + i, $actionView).prop('checked'),
+              tpn: noticetype
+            }
           }
 
           spiHelperBlocks.push(item)
@@ -2151,6 +2159,45 @@ async function spiHelperGetUserBlockReason (user) {
     return response.query.blocks[0].reason
   } catch (error) {
     return ''
+  }
+}
+
+/**
+ * Get a user's current block settings
+ *
+ * @param {string} user Username
+ * @return {Promise<BlockEntry>} Current block settings for the user, or null if the user is not blocked
+*/
+async function spiHelperGetUserBlockSettings(user) {
+  'use strict'
+  // This is not something which should ever be cross-wiki
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      list: 'blocks',
+      bklimit: '1',
+      bkusers: user,
+      bkprop: 'user|reason'
+    })
+    if (response.query.blocks.length === 0) {
+      // If the length is 0, then the user isn't blocked
+      return null
+    }
+
+    /** @type {BlockEntry} */
+    const item = {
+      username: user,
+      duration: response.query.blocks[0].duration,
+      acb: ('nocreate' in response.query.blocks[0] || 'anononly' in response.query.blocks[0]),
+      ab: 'autoblock' in response.query.blocks[0],
+      ntp: !('allowusertalk' in response.query.blocks[0]),
+      nem: 'noemail' in response.query.blocks[0],
+      tpn: ''
+    }
+    return item
+  } catch (error) {
+    return null
   }
 }
 
