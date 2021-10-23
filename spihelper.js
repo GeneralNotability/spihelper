@@ -199,7 +199,7 @@ const spiHelperPriorCasesRegex = /{{spipriorcases}}/i
 
 // regex to remove hidden characters from form inputs - they mess up some things,
 // especially mw.util.isIP
-const spiHelperHiddenCharNormRegex = /\u200E/
+const spiHelperHiddenCharNormRegex = /\u200E/g
 
 const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
 
@@ -2836,7 +2836,7 @@ function spiHelperIsClerk () {
  */
 function spiHelperNormalizeUsername (username) {
   // Replace underscores with spaces
-  username = username.replace('_', ' ')
+  username = username.replace('/_/g', ' ')
   // Get rid of bad hidden characters
   username = username.replace(spiHelperHiddenCharNormRegex, '')
   // Remove leading and trailing spaces
