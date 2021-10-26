@@ -655,19 +655,19 @@ async function spiHelperGenerateForm () {
 
     for (let i = 0; i < likelyusers.length; i++) {
       spiHelperUserCount++
-      spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperUserCount)
+      await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperUserCount)
     }
     for (let i = 0; i < likelyips.length; i++) {
       spiHelperUserCount++
-      spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperUserCount)
+      await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperUserCount)
     }
     for (let i = 0; i < possibleusers.length; i++) {
       spiHelperUserCount++
-      spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperUserCount)
+      await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperUserCount)
     }
     for (let i = 0; i < possibleips.length; i++) {
       spiHelperUserCount++
-      spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperUserCount)
+      await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperUserCount)
     }
   } else {
     $('#spiHelper_blockTagView', $actionView).hide()
@@ -835,29 +835,16 @@ async function spiHelperPerformActions () {
             noticetype = 'sock'
           }
 
-          const currentBlock = await spiHelperGetUserBlockSettings(username)
-
           /** @type {BlockEntry} */
-          let item
-          if (currentBlock) {
-            item = currentBlock
-            item.tpn = noticetype
-          } else {
-            item = {
-              username: username,
-              duration: $('#spiHelper_block_duration' + i, $actionView).val().toString(),
-              acb: $('#spiHelper_block_acb' + i, $actionView).prop('checked'),
-              ab: $('#spiHelper_block_ab' + i, $actionView).prop('checked'),
-              ntp: $('#spiHelper_block_tp' + i, $actionView).prop('checked'),
-              nem: $('#spiHelper_block_email' + i, $actionView).prop('checked'),
-              tpn: noticetype
-            }
+          const item = {
+            username: username,
+            duration: $('#spiHelper_block_duration' + i, $actionView).val().toString(),
+            acb: $('#spiHelper_block_acb' + i, $actionView).prop('checked'),
+            ab: $('#spiHelper_block_ab' + i, $actionView).prop('checked'),
+            ntp: $('#spiHelper_block_tp' + i, $actionView).prop('checked'),
+            nem: $('#spiHelper_block_email' + i, $actionView).prop('checked'),
+            tpn: noticetype
           }
-          if (spiHelperArchiveNoticeParams.notalk) {
-            item.ntp = true
-            item.nem = true
-          }
-
           spiHelperBlocks.push(item)
         }
         if ($('#spiHelper_block_lock' + i, $actionView).prop('checked')) {
@@ -2406,8 +2393,28 @@ function spiHelperGetArchiveName () {
  * @param {boolean} defaultblock Whether to check the block box by default on this row
  * @param {number} id Index of this line in the block table
  */
-function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
+async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   'use strict'
+
+  const currentBlock = await spiHelperGetUserBlockSettings(name)
+
+  let block, ab, acb, ntp, nem, duration
+
+  if (currentBlock) {
+    block = true
+    acb = currentBlock.acb
+    ab = currentBlock.ab
+    ntp = currentBlock.ntp
+    nem = currentBlock.nem
+    duration = currentBlock.duration
+  } else {
+    block = defaultblock
+    acb = true
+    ab = true
+    ntp = spiHelperArchiveNoticeParams.notalk
+    nem = spiHelperArchiveNoticeParams.notalk
+    duration = mw.util.isIPAddress(name, true) ? '1 week' : 'indefinite'
+  }
 
   const $table = $('#spiHelper_blockTable', document)
 
@@ -2417,24 +2424,23 @@ function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
     .val(name).addClass('.spihelper-widthlimit')).appendTo($row)
   // Block checkbox (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_doblock' + id).prop('checked', defaultblock)).appendTo($row)
+    .attr('id', 'spiHelper_block_doblock' + id).prop('checked', block)).appendTo($row)
   // Block duration (only for admins)
-  const defaultBlockDuration = mw.util.isIPAddress(name, true) ? '1 week' : 'indefinite'
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'text')
-    .attr('id', 'spiHelper_block_duration' + id).val(defaultBlockDuration)
+    .attr('id', 'spiHelper_block_duration' + id).val(duration)
     .addClass('.spihelper-widthlimit')).appendTo($row)
   // Account creation blocked (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_acb' + id).prop('checked', true)).appendTo($row)
+    .attr('id', 'spiHelper_block_acb' + id).prop('checked', acb)).appendTo($row)
   // Autoblock (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_ab' + id).prop('checked', true)).appendTo($row)
+    .attr('id', 'spiHelper_block_ab' + id).prop('checked', ab)).appendTo($row)
   // Revoke talk page access (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_tp' + id)).appendTo($row)
+    .attr('id', 'spiHelper_block_tp' + id).prop('checked', ntp)).appendTo($row)
   // Block email access (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_email' + id)).appendTo($row)
+    .attr('id', 'spiHelper_block_email' + id).prop('checked', nem)).appendTo($row)
   // Tag select box
   $('<td>').append($('<select>').attr('id', 'spiHelper_block_tag' + id)
     .val(name)).appendTo($row)
@@ -2929,11 +2935,11 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
  * Would fail ESlint no-unused-vars due to only being
  * referenced in an onclick event
  *
- * @return {void}
+ * @return {Promise<void>}
  */
 // eslint-disable-next-line no-unused-vars
-function spiHelperAddBlankUserLine () {
+async function spiHelperAddBlankUserLine () {
   spiHelperUserCount++
-  spiHelperGenerateBlockTableLine('', true, spiHelperUserCount)
+  await spiHelperGenerateBlockTableLine('', true, spiHelperUserCount)
   updateForRole()
 }
