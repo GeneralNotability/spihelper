@@ -2177,7 +2177,7 @@ async function spiHelperGetUserBlockSettings (user) {
       list: 'blocks',
       bklimit: '1',
       bkusers: user,
-      bkprop: 'user|reason'
+      bkprop: 'user|reason|flags|expiry'
     })
     if (response.query.blocks.length === 0) {
       // If the length is 0, then the user isn't blocked
