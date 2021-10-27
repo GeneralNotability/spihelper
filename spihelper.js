@@ -2187,7 +2187,7 @@ async function spiHelperGetUserBlockSettings (user) {
     /** @type {BlockEntry} */
     const item = {
       username: user,
-      duration: response.query.blocks[0].duration,
+      duration: response.query.blocks[0].expiry,
       acb: ('nocreate' in response.query.blocks[0] || 'anononly' in response.query.blocks[0]),
       ab: 'autoblock' in response.query.blocks[0],
       ntp: !('allowusertalk' in response.query.blocks[0]),
