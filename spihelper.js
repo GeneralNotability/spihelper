@@ -1090,7 +1090,7 @@ async function spiHelperPerformActions () {
             newText = '== Blocked for sockpuppetry ==\n'
           }
           newText += '{{subst:uw-sockblock|spi=' + spiHelperCaseName
-          if (blockEntry.duration === 'indefinite') {
+          if (blockEntry.duration === 'indefinite' || blockEntry.duration === 'infinity') {
             newText += '|indef=yes'
           } else {
             newText += '|duration=' + blockEntry.duration
