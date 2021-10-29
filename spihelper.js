@@ -1,7 +1,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.7.0 "Counting forks"
+// v2.7.1 "Counting forks"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
 
@@ -1092,7 +1092,7 @@ async function spiHelperPerformActions () {
             newText = '== Blocked for sockpuppetry ==\n'
           }
           newText += '{{subst:uw-sockblock|spi=' + spiHelperCaseName
-          if (blockEntry.duration === 'indefinite') {
+          if (blockEntry.duration === 'indefinite' || blockEntry.duration === 'infinity') {
             newText += '|indef=yes'
           } else {
             newText += '|duration=' + blockEntry.duration
@@ -2398,7 +2398,10 @@ function spiHelperGetArchiveName () {
 async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   'use strict'
 
-  const currentBlock = await spiHelperGetUserBlockSettings(name)
+  let currentBlock = null
+  if (name) {
+    currentBlock = await spiHelperGetUserBlockSettings(name)
+  }
 
   let block, ab, acb, ntp, nem, duration
 
