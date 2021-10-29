@@ -2396,7 +2396,10 @@ function spiHelperGetArchiveName () {
 async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   'use strict'
 
-  const currentBlock = await spiHelperGetUserBlockSettings(name)
+  let currentBlock = null
+  if (name) {
+    currentBlock = await spiHelperGetUserBlockSettings(name)
+  }
 
   let block, ab, acb, ntp, nem, duration
 
