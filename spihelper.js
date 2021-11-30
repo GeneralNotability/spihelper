@@ -2507,6 +2507,15 @@ async function spiHelperSetCheckboxesBySection () {
   $closeBox.prop('disabled', false)
   $archiveBox.prop('disabled', false)
 
+  // archivenotice sanity check
+  const pageText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
+
+  const result = spiHelperArchiveNoticeRegex.exec(pageText)
+  if (!result) {
+    $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
+    $warningText.show()
+  }
+
   if (spiHelperSectionId === null) {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
@@ -2533,7 +2542,7 @@ async function spiHelperSetCheckboxesBySection () {
     if (result) {
       casestatus = result[1]
     } else {
-      $warningText.text(`Can't find case status in ${spiHelperSectionName}!`)
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
       $warningText.show()
     }
 
