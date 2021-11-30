@@ -2508,7 +2508,7 @@ async function spiHelperSetCheckboxesBySection () {
   $archiveBox.prop('disabled', false)
 
   // archivenotice sanity check
-  const pageText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
+  const pageText = await spiHelperGetPageText(spiHelperPageName, false)
 
   const result = spiHelperArchiveNoticeRegex.exec(pageText)
   if (!result) {
