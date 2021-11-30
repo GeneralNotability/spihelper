@@ -224,7 +224,7 @@ const spiHelperTopViewHTML = `
 <div id="spiHelper_topViewDiv">
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
-  <h4 id="spiHelper_warning" class="spiHelper-errortext" hidden></h4>
+  <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
   <ul>
     <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
@@ -1063,7 +1063,7 @@ async function spiHelperPerformActions () {
           if (blockEntry.tpn) {
             // Also warn the user if we were going to post a block notice on their talk page
             const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-            $statusLine.addClass('spiHelper-errortext').html('<b>Block failed on ' + blockEntry.username + ', not adding talk page notice</b>')
+            $statusLine.addClass('spihelper-errortext').html('<b>Block failed on ' + blockEntry.username + ', not adding talk page notice</b>')
           }
           return
         }
@@ -1607,7 +1607,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
 
   if (!archiveSuccess) {
     const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-    $statusLine.addClass('spiHelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
+    $statusLine.addClass('spihelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
     return
   }
 
@@ -1943,7 +1943,7 @@ async function spiHelperGetPageText (title, show, sectionId = null) {
     $statusLine.html('Got ' + $link.html())
     return response.query.pages[pageid].revisions[0].slots.main['*']
   } catch (error) {
-    $statusLine.addClass('spiHelper-errortext').html('<b>Failed to get ' + $link.html() + '</b>: ' + error)
+    $statusLine.addClass('spihelper-errortext').html('<b>Failed to get ' + $link.html() + '</b>: ' + error)
     return ''
   }
 }
@@ -2003,7 +2003,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     spiHelperActiveOperations.set(activeOpKey, 'success')
     return true
   } catch (error) {
-    $statusLine.addClass('spiHelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error)
+    $statusLine.addClass('spihelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error)
     console.error(error)
     spiHelperActiveOperations.set(activeOpKey, 'failed')
     return false
