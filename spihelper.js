@@ -1180,6 +1180,10 @@ async function spiHelperPerformActions () {
             checked = 'yes'
             isMaster = true
             break
+          default:
+            // Should not be reachable, but since a couple people have
+            // reported blank tags, let's add a safety check
+            return
         }
         const isLocked = await spiHelperIsUserGloballyLocked(tagEntry.username) ? 'yes' : 'no'
         let isNotBlocked
