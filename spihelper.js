@@ -1655,6 +1655,7 @@ async function spiHelperMoveCase (target) {
       .append($('<div>').addClass('spihelper-errortext')
         .append($('<b>').text('Target page is the current page, aborting merge.')))
       .appendTo($('#spiHelper_status', document))
+    return
   }
   // Housekeeping to update all of the var names following the rename
   const oldArchiveName = spiHelperGetArchiveName()
