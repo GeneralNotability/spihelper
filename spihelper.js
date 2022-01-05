@@ -1649,6 +1649,7 @@ async function spiHelperMoveCase (target) {
       return
     }
   }
+  const oldPageName = spiHelperPageName
   if (newPageName === oldPageName) {
     $('<li>')
       .append($('<div>').addClass('spihelper-errortext')
@@ -1656,7 +1657,6 @@ async function spiHelperMoveCase (target) {
       .appendTo($('#spiHelper_status', document))
   }
   // Housekeeping to update all of the var names following the rename
-  const oldPageName = spiHelperPageName
   const oldArchiveName = spiHelperGetArchiveName()
   spiHelperCaseName = target
   spiHelperPageName = newPageName
