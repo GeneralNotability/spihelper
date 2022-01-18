@@ -1210,7 +1210,6 @@ async function spiHelperPerformActions () {
         } else if (!existsLocally) {
           // If the user account does not exist locally it cannot be blocked. This check skips the need for the API call to check if the user is blocked
           isNotBlocked = 'yes'
-        }
         } else {
           // Otherwise, query whether the user is blocked
           isNotBlocked = await spiHelperGetUserBlockReason(tagEntry.username) ? 'no' : 'yes'
