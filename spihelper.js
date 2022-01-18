@@ -52,7 +52,7 @@ importScript('User:Timotheus Canens/displaymessage.js')
 
 // Globals
 // User-configurable settings, these are the defaults but will be updated by
-// spiHelper_loadSettings()
+// spiHelperLoadSettings()
 const spiHelperSettings = {
   // Choices are 'watch' (unconditionally add to watchlist), 'preferences'
   // (follow default preferences), 'nochange' (don't change the watchlist
@@ -80,6 +80,24 @@ const spiHelperSettings = {
   // you don't do something that violates policy
   debugForceCheckuserState: null,
   debugForceAdminState: null
+}
+
+// Valid options for spiHelperSettings. Prevents invalid setting options being specified in the spioptions user subpage.
+// This method only works options with discrete possible values. As such the expiry options will need to be accomodated for in spiHelperLoadSettings() via a check
+// that validates it is a valid expiry option.
+const spiHelperValidSettings = {
+ watchCase: ['preferences', 'watch', 'nochange', 'unwatch'],
+ watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
+ watchTaggedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+ watchNewCats: ['preferences', 'watch', 'nochange', 'unwatch'],
+ watchBlockedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+ clerk: [true, false],
+ log: [true, false],
+ reversed_log: [true, false],
+ iUnderstandSectionMoves: [true, false],
+ debugForceCheckuserState: [null, true, false],
+ debugForceAdminState: [null, true, false]
+ 
 }
 
 /** @type {string} Name of the SPI page in wiki title form
@@ -241,7 +259,7 @@ const spiHelperTopViewHTML = `
     <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly">
       <input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
       <label for="spiHelper_Comment">Note/comment</label>
-      </li>
+    </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly">
       <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close")" />
       <label for="spiHelper_Close">Close case</label>
@@ -2808,6 +2826,12 @@ async function spiHelperLoadSettings () {
     await mw.loader.getScript('/w/index.php?title=Special:MyPage/spihelper-options.js&action=raw&ctype=text/javascript')
     if (typeof spiHelperCustomOpts !== 'undefined') {
       Object.entries(spiHelperCustomOpts).forEach(([k, v]) => {
+        if (k in spiHelperValidSettings) {
+          if (spiHelperValidSettings[k].indexOf(v) === -1) {
+            mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
+            return
+          }
+        }
         spiHelperSettings[k] = v
       })
     }
