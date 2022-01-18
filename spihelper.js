@@ -1139,12 +1139,12 @@ async function spiHelperPerformActions () {
         if (mw.util.isIPAddress(tagEntry.username, true)) {
           return // do not support tagging IPs
         }
-        let existsGlobally = spiHelperDoesUserExistGlobally(tagEntry.username)
-        let existsLocally = spiHelperDoesUserExistLocally(tagEntry.username)
+        const existsGlobally = spiHelperDoesUserExistGlobally(tagEntry.username)
+        const existsLocally = spiHelperDoesUserExistLocally(tagEntry.username)
         if (!existsGlobally && !existsLocally) {
           // Skip, don't tag accounts that don't exist
           const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-          $statusLine.addClass('spihelper-errortext').html('<b>The account ' + blockEntry.username + ' does not exist and so has not been tagged.</b>')
+          $statusLine.addClass('spihelper-errortext').html('<b>The account ' + tagEntry.username + ' does not exist and so has not been tagged.</b>')
           return
         }
         if (!($('#spiHelper_tagAccountsWithoutLocalAccount', $actionView).prop('checked')) && existsGlobally && !existsLocally) {
@@ -2261,10 +2261,10 @@ async function spiHelperIsUserGloballyLocked (user) {
 }
 
 async function spiHelperDoesUserExistLocally (user) {
- 'use strict'
- // This should never be cross-wiki
- const api = new mw.Api()
- try {
+  'use strict'
+  // This should never be cross-wiki
+  const api = new mw.Api()
+  try {
     const response = await api.get({
       action: 'query',
       list: 'allusers',
@@ -2284,9 +2284,9 @@ async function spiHelperDoesUserExistLocally (user) {
 }
 
 async function spiHelperDoesUserExistGlobally (user) {
- 'use strict'
- const api = new mw.Api()
- try {
+  'use strict'
+  const api = new mw.Api()
+  try {
     const response = await api.get({
       action: 'query',
       list: 'globalallusers',
