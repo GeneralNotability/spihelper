@@ -86,18 +86,17 @@ const spiHelperSettings = {
 // This method only works options with discrete possible values. As such the expiry options will need to be accomodated for in spiHelperLoadSettings() via a check
 // that validates it is a valid expiry option.
 const spiHelperValidSettings = {
- watchCase: ['preferences', 'watch', 'nochange', 'unwatch'],
- watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
- watchTaggedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
- watchNewCats: ['preferences', 'watch', 'nochange', 'unwatch'],
- watchBlockedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
- clerk: [true, false],
- log: [true, false],
- reversed_log: [true, false],
- iUnderstandSectionMoves: [true, false],
- debugForceCheckuserState: [null, true, false],
- debugForceAdminState: [null, true, false]
- 
+  watchCase: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchTaggedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchNewCats: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchBlockedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+  clerk: [true, false],
+  log: [true, false],
+  reversed_log: [true, false],
+  iUnderstandSectionMoves: [true, false],
+  debugForceCheckuserState: [null, true, false],
+  debugForceAdminState: [null, true, false]
 }
 
 /** @type {string} Name of the SPI page in wiki title form
