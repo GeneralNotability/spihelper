@@ -268,8 +268,7 @@ async function spiHelperInit () {
   spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
   if (spiHelperIsThisPageAnArchive) {
     spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '').replace(/\/Archive/, '')
-  }
-  else {
+  } else {
     spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
   }
   spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
@@ -318,7 +317,7 @@ async function spiHelperInit () {
   if (!spiHelperIsClerk()) {
     $('.spiHelper_clerkClass', $topView).hide()
   }
-  
+
   // Only show options suitable for the archive subpage when running on the archives
   if (spiHelperIsThisPageAnArchive) {
     $('.spiHelper_notOnArchive', $topView).hide()
