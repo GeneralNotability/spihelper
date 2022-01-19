@@ -319,15 +319,7 @@ async function spiHelperInit () {
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
-  // Hide block and close from non-admin non-clerks
-  if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $topView).hide()
-  }
-
-  // Hide move and archive from non-clerks
-  if (!spiHelperIsClerk()) {
-    $('.spiHelper_clerkClass', $topView).hide()
-  }
+  updateForRole($topView)
 
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
@@ -754,22 +746,26 @@ async function spiHelperGenerateForm () {
     spiHelperPerformActions()
   })
 
-  updateForRole()
+  updateForRole($actionView)
 }
 
-async function updateForRole () {
-  const $actionView = $('#spiHelper_actionViewDiv', document)
+/**
+ * Update the view for the roles of the person running the script
+ * by selectively hiding.
+ * view: @type JQuery object representing the class / id for the view
+ */
+async function updateForRole (view) {
   // Hide items based on role
   if (!spiHelperIsCheckuser()) {
     // Hide CU options from non-CUs
-    $('.spiHelper_cuClass', $actionView).hide()
+    $('.spiHelper_cuClass', $view).hide()
   }
   if (!spiHelperIsAdmin()) {
     // Hide block options from non-admins
-    $('.spiHelper_adminClass', $actionView).hide()
+    $('.spiHelper_adminClass', $view).hide()
   }
   if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $actionView).hide()
+    $('.spiHelper_adminClerkClass', $view).hide()
   }
 }
 
