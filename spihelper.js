@@ -1,6 +1,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
+// With contributions from Dreamy Jazz, L235, Tamzin, TheresNoTime
 // v2.7.1 "Counting forks"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
