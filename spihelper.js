@@ -273,7 +273,7 @@ const spiHelperTopViewHTML = `
       <label for="spiHelper_Archive">Archive case (Clerk only)</label>
     </li>
   </ul>
-  <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" onclick="spiHelperGenerateForm()" />
+  <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" />
 </div>
 `
 
@@ -331,6 +331,10 @@ async function spiHelperInit () {
 
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
+
+  $('#spiHelper_GenerateForm', $topView).one('click', () => {
+    spiHelperGenerateForm()
+  })
 }
 
 const spiHelperActionViewHTML = `
@@ -476,7 +480,6 @@ async function spiHelperGenerateForm () {
   'use strict'
   spiHelperUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
-  $('#spiHelper_GenerateForm', $topView).prop('disabled', true)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
   spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
@@ -499,7 +502,7 @@ async function spiHelperGenerateForm () {
   const $actionView = $('#spiHelper_actionViewDiv', document)
 
   // Wire up the action view
-  $('#spiHelper_backLink', $actionView).on('click', () => {
+  $('#spiHelper_backLink', $actionView).one('click', () => {
     spiHelperInit()
   })
   if (spiHelperActionsSelected.Case_act) {
@@ -750,7 +753,7 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_commentView', $actionView).hide()
   }
   // Wire up the submit button
-  $('#spiHelper_performActions', $actionView).on('click', () => {
+  $('#spiHelper_performActions', $actionView).one('click', () => {
     spiHelperPerformActions()
   })
 
