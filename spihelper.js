@@ -347,11 +347,15 @@ const spiHelperActionViewHTML = `
     <ul>
       <li class="spiHelper_adminClass">
         <input type="checkbox" name="spiHelper_noblock" id="spiHelper_noblock" />
-        <label for="spiHelper_noblock">Do not make any blocks (this overrides the individual "Blk" boxes below)</label>
+        <label for="spiHelper_noblock">Do not make any blocks (this overrides the individual "Blk" boxes below).</label>
       </li>
       <li class="spiHelper_adminClass">
         <input type="checkbox" name="spiHelper_override" id="spiHelper_override" />
-        <label for="spiHelper_override">Override any existing blocks</label>
+        <label for="spiHelper_override">Override any existing blocks.</label>
+      </li>
+      <li class="spiHelper_clerkClass">
+        <input type="checkbox" checked="checked" name="spiHelper_tagAccountsWithoutLocalAccount" id="spiHelper_tagAccountsWithoutLocalAccount" />
+        <label for"spiHelper_tagAccountsWithoutLocalAccount">Tag accounts without an attached local account.</label>
       </li>
       <li class="spiHelper_cuClass">
         <input type="checkbox" name="spiHelper_cublock" id="spiHelper_cublock" />
@@ -1135,6 +1139,18 @@ async function spiHelperPerformActions () {
         if (mw.util.isIPAddress(tagEntry.username, true)) {
           return // do not support tagging IPs
         }
+        const existsGlobally = spiHelperDoesUserExistGlobally(tagEntry.username)
+        const existsLocally = spiHelperDoesUserExistLocally(tagEntry.username)
+        if (!existsGlobally && !existsLocally) {
+          // Skip, don't tag accounts that don't exist
+          const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+          $statusLine.addClass('spihelper-errortext').html('<b>The account ' + tagEntry.username + ' does not exist and so has not been tagged.</b>')
+          return
+        }
+        if (!($('#spiHelper_tagAccountsWithoutLocalAccount', $actionView).prop('checked')) && existsGlobally && !existsLocally) {
+          // Skip as the account does not exist locally but the "tag accounts that exist locally" setting is unchecked.
+          return
+        }
         let tagText = ''
         let altmasterName = ''
         let altmasterTag = ''
@@ -1191,6 +1207,9 @@ async function spiHelperPerformActions () {
         // block hasn't gone through by the time we reach this point
         if (tagEntry.blocking) {
           isNotBlocked = 'no'
+        } else if (!existsLocally) {
+          // If the user account does not exist locally it cannot be blocked. This check skips the need for the API call to check if the user is blocked
+          isNotBlocked = 'yes'
         } else {
           // Otherwise, query whether the user is blocked
           isNotBlocked = await spiHelperGetUserBlockReason(tagEntry.username) ? 'no' : 'yes'
@@ -2236,6 +2255,51 @@ async function spiHelperIsUserGloballyLocked (user) {
     }
     // If the 'locked' field is present, then the user is locked
     return 'locked' in response.query.globalallusers[0]
+  } catch (error) {
+    return false
+  }
+}
+
+async function spiHelperDoesUserExistLocally (user) {
+  'use strict'
+  // This should never be cross-wiki
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      list: 'allusers',
+      agulimit: '1',
+      agufrom: user,
+      aguto: user
+    })
+    if (response.query.allusers.length === 0) {
+      // If the length is 0, then we couldn't find the local account so return false
+      return false
+    }
+    // Otherwise a local account exists so return true
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
+async function spiHelperDoesUserExistGlobally (user) {
+  'use strict'
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      list: 'globalallusers',
+      agulimit: '1',
+      agufrom: user,
+      aguto: user
+    })
+    if (response.query.globalallusers.length === 0) {
+      // If the length is 0, then we couldn't find the global user so return false
+      return false
+    }
+    // Otherwise the global account exists so return true
+    return true
   } catch (error) {
     return false
   }
