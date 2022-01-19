@@ -2507,7 +2507,7 @@ async function spiHelperGetSPIBacklinks (casePageName) {
       blfilterredir: 'nonredirects'
     })
     return response.query.backlinks.filter((pageid, ns, title) => {
-      return title.startsWith("Wikipedia:Sockpuppet investigations/") && !title.startsWith("Wikipedia:Sockpuppet investigations/SPI/") && !title.match("Wikipedia:Sockpuppet investigations/.*/Archive.*")
+      return title.startsWith('Wikipedia:Sockpuppet investigations/') && !title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
     })
   } catch (error) {
     return []
