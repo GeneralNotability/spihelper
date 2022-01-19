@@ -1516,6 +1516,26 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams) + '\n{{SPIpriorcases}}'
   const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '')
 
+  // Update previous SPI redirects to this location
+  let pagesChecked = []
+  let pagesToCheck = [oldCasePage]
+  let currentPageToCheck = null
+  while (pagesToCheck.length != 0) {
+    currentPageToCheck = pagesToCheck.pop()
+    let backlinks = spiHelperGetSPIBacklinks(currentPageToCheck)
+    backlinks = backlinks.filter((_0, _1, title) => {
+      return spiHelperParseArchiveNotice(title).username == currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+    })
+    backlinks.forEach((_0, _1, title) => {
+      spiHelperEditPage(title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+    })
+    pagesChecked.append(currentPageToCheck)
+    backlinks = backlinks.filter(_0, _1, title) => {
+      return pagesChecked.indexOf(title) == -1
+    })
+    pagesToCheck.conct(backlinks)
+  }
+
   // The old case should just be the archivenotice template and point to the new case
   spiHelperEditPage(oldCasePage, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
 
@@ -2474,7 +2494,7 @@ async function spiHelperGetInvestigationSectionIDs () {
  * Used to fix double redirects when merging cases.
  * 
  */
-function spiHelperGetSPIBacklinks () {
+function spiHelperGetSPIBacklinks (casePageName) {
   // Only looking for enwiki backlinks
   const api = new mw.Api()
   try {
@@ -2482,7 +2502,7 @@ function spiHelperGetSPIBacklinks () {
       action: "query",
       format: "json",
       list: "backlinks",
-      bltitle: spiHelperPageName,
+      bltitle: casePageName,
       blnamespace: "4",
       bldir: "ascending",
       blfilterredir: "nonredirects"
