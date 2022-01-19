@@ -1517,21 +1517,21 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '')
 
   // Update previous SPI redirects to this location
-  let pagesChecked = []
-  let pagesToCheck = [oldCasePage]
+  const pagesChecked = []
+  const pagesToCheck = [oldCasePage]
   let currentPageToCheck = null
-  while (pagesToCheck.length != 0) {
+  while (pagesToCheck.length !== 0) {
     currentPageToCheck = pagesToCheck.pop()
     let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
     backlinks = backlinks.filter((_0, _1, title) => {
-      return spiHelperParseArchiveNotice(title).username == currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+      return spiHelperParseArchiveNotice(title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
     })
     backlinks.forEach((_0, _1, title) => {
       spiHelperEditPage(title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
     })
     pagesChecked.append(currentPageToCheck)
     backlinks = backlinks.filter((_0, _1, title) => {
-      return pagesChecked.indexOf(title) == -1
+      return pagesChecked.indexOf(title) === -1
     })
     pagesToCheck.conct(backlinks)
   }
@@ -2492,20 +2492,19 @@ async function spiHelperGetInvestigationSectionIDs () {
 /**
  * Get SPI page backlinks to this SPI page.
  * Used to fix double redirects when merging cases.
- * 
  */
 async function spiHelperGetSPIBacklinks (casePageName) {
   // Only looking for enwiki backlinks
   const api = new mw.Api()
   try {
     const response = await api.get({
-      action: "query",
-      format: "json",
-      list: "backlinks",
+      action: 'query',
+      format: 'json',
+      list: 'backlinks',
       bltitle: casePageName,
-      blnamespace: "4",
-      bldir: "ascending",
-      blfilterredir: "nonredirects"
+      blnamespace: '4',
+      bldir: 'ascending',
+      blfilterredir: 'nonredirects'
     })
     return response.query.backlinks.filter((pageid, ns, title) => {
       return title.startsWith("Wikipedia:Sockpuppet investigations/") && !title.startsWith("Wikipedia:Sockpuppet investigations/SPI/") && !title.match("Wikipedia:Sockpuppet investigations/.*/Archive.*")
