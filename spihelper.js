@@ -935,7 +935,7 @@ async function spiHelperPerformActions () {
   if (spiHelperSectionId !== null) {
     let caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
     if (caseStatusResult === null) {
-      sectionText = sectionText.replace('===', '{{SPI case status|}}\n===')
+      sectionText = sectionText.replace(/^(\s*===.*===[^\S\r\n]*)/, '$1\n{{SPI case status|}}')
       caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
     }
     const oldCaseStatus = caseStatusResult[1] || 'open'
