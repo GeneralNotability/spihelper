@@ -1530,7 +1530,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
       spiHelperEditPage(title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
     })
     pagesChecked.append(currentPageToCheck)
-    backlinks = backlinks.filter(_0, _1, title) => {
+    backlinks = backlinks.filter((_0, _1, title) => {
       return pagesChecked.indexOf(title) == -1
     })
     pagesToCheck.conct(backlinks)
