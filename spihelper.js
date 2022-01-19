@@ -261,7 +261,7 @@ const spiHelperTopViewHTML = `
       <label for="spiHelper_Comment">Note/comment</label>
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly">
-      <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close")" />
+      <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
       <label for="spiHelper_Close">Close case</label>
     </li>
     <li id="spiHelper_moveLine" class="spiHelper_clerkClass">
