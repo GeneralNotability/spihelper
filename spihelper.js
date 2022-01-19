@@ -2470,6 +2470,32 @@ async function spiHelperGetInvestigationSectionIDs () {
 }
 
 /**
+ * Get SPI page backlinks to this SPI page.
+ * Used to fix double redirects when merging cases.
+ * 
+ */
+function spiHelperGetSPIBacklinks () {
+  // Only looking for enwiki backlinks
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: "query",
+      format: "json",
+      list: "backlinks",
+      bltitle: spiHelperPageName,
+      blnamespace: "4",
+      bldir: "ascending",
+      blfilterredir: "nonredirects"
+    })
+    return response.query.backlinks.filter((pageid, ns, title) => {
+      return title.startsWith("Wikipedia:Sockpuppet investigations/") && !title.startsWith("Wikipedia:Sockpuppet investigations/SPI/") && !title.match("Wikipedia:Sockpuppet investigations/.*/Archive.*")
+    })
+  } catch (error) {
+    return []
+  }
+}
+
+/**
  * Pretty obvious - gets the name of the archive. This keeps us from having to regen it
  * if we rename the case
  *
