@@ -1523,15 +1523,15 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   while (pagesToCheck.length !== 0) {
     currentPageToCheck = pagesToCheck.pop()
     let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
-    backlinks = backlinks.filter((_0, _1, title) => {
-      return spiHelperParseArchiveNotice(title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+    backlinks = backlinks.filter((dictEntry) => {
+      return spiHelperParseArchiveNotice(dictEntry.title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
     })
-    backlinks.forEach((_0, _1, title) => {
-      spiHelperEditPage(title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+    backlinks.forEach((dictEntry) => {
+      spiHelperEditPage(dictEntry.title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
     })
     pagesChecked.append(currentPageToCheck)
-    backlinks = backlinks.filter((_0, _1, title) => {
-      return pagesChecked.indexOf(title) === -1
+    backlinks = backlinks.filter((dictEntry) => {
+      return pagesChecked.indexOf(dictEntry.title) === -1
     })
     pagesToCheck.conct(backlinks)
   }
@@ -2506,8 +2506,8 @@ async function spiHelperGetSPIBacklinks (casePageName) {
       bldir: 'ascending',
       blfilterredir: 'nonredirects'
     })
-    return response.query.backlinks.filter((pageid, ns, title) => {
-      return title.startsWith('Wikipedia:Sockpuppet investigations/') && !title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
+    return response.query.backlinks.filter((dictEntry) => {
+      return dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/') && !dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !dictEntry.title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
     })
   } catch (error) {
     return []
