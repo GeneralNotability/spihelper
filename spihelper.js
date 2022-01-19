@@ -454,6 +454,7 @@ async function spiHelperGenerateForm () {
   'use strict'
   spiHelperUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
+  $('#spiHelper_GenerateForm', $topView).prop('disabled', true)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
   spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
