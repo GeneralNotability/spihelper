@@ -1522,7 +1522,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   let currentPageToCheck = null
   while (pagesToCheck.length != 0) {
     currentPageToCheck = pagesToCheck.pop()
-    let backlinks = spiHelperGetSPIBacklinks(currentPageToCheck)
+    let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
     backlinks = backlinks.filter((_0, _1, title) => {
       return spiHelperParseArchiveNotice(title).username == currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
     })
@@ -2494,7 +2494,7 @@ async function spiHelperGetInvestigationSectionIDs () {
  * Used to fix double redirects when merging cases.
  * 
  */
-function spiHelperGetSPIBacklinks (casePageName) {
+async function spiHelperGetSPIBacklinks (casePageName) {
   // Only looking for enwiki backlinks
   const api = new mw.Api()
   try {
