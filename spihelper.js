@@ -758,14 +758,14 @@ async function updateForRole (view) {
   // Hide items based on role
   if (!spiHelperIsCheckuser()) {
     // Hide CU options from non-CUs
-    $('.spiHelper_cuClass', $view).hide()
+    $('.spiHelper_cuClass', view).hide()
   }
   if (!spiHelperIsAdmin()) {
     // Hide block options from non-admins
-    $('.spiHelper_adminClass', $view).hide()
+    $('.spiHelper_adminClass', view).hide()
   }
   if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $view).hide()
+    $('.spiHelper_adminClerkClass', view).hide()
   }
 }
 
