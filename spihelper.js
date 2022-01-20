@@ -1400,6 +1400,8 @@ async function spiHelperPerformActions () {
   }
   if (spiHelperSectionId && comment && comment !== '*' && !spiHelperIsThisPageAnArchive) {
     if (!sectionText.includes('\n----')) {
+      sectionText.replace('<!--- All comments go ABOVE this line, please. -->', '')
+      sectionText.replace('<!-- All comments go ABOVE this line, please. -->', '')
       sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
     }
     if (!/~~~~/.test(comment)) {
