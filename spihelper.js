@@ -2692,7 +2692,7 @@ async function spiHelperSetCheckboxesBySection () {
     let casestatus = ''
     if (result) {
       casestatus = result[1]
-    } else {
+    } else if (!spiHelperIsThisPageAnArchive) {
       $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
       $warningText.show()
     }
@@ -2715,6 +2715,10 @@ async function spiHelperSetCheckboxesBySection () {
     $('#spiHelper_moveLabel', $topView).html('Move case section (<span title="You probably want to move the full case, ' +
       'select All Sections instead of a specific date in the drop-down"' +
       'class="rt-commentedText spihelper-hovertext"><b>READ ME FIRST</b></span>)')
+  }
+  // Only show options suitable for the archive subpage when running on the archives
+  if (spiHelperIsThisPageAnArchive) {
+    $('.spiHelper_notOnArchive', $topView).hide()
   }
 }
 
