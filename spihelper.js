@@ -297,6 +297,23 @@ async function spiHelperInit () {
   // First, insert the template text
   displayMessage(spiHelperTopViewHTML)
 
+  if(spiHelperArchiveNoticeParams.username === null) {
+    // No archive notice was found
+    const $warningText = $('#spiHelper_warning', $topView)
+    $warningText.show()
+    $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
+    newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, {xwiki: false, deny: false, notalk: false})
+    let pagetext = await spiHelperGetPageText(spiHelperPageName, false)
+    if (spiHelperPriorCasesRegex.exec(pagetext) === null) {
+      pagetext = '{{SPIpriorcases}}\n' + pagetext
+    }
+    pagetext = newArchiveNotice + '\n' + pagetext
+    if (pagetext.indexOf('__TOC__') === -1) {
+      pagetext = '<noinclude>__TOC__</noinclude>\n' + pagetext
+    }
+    await spiHelperEditPage(spiHelperPageName, pagetext, "Adding archive notice", false, spiHelperSettings.watchCase, watchExpiry = spiHelperSettings.watchCaseExpiry)
+  }
+
   // Narrow search scope
   const $topView = $('#spiHelper_topViewDiv', document)
 
@@ -3040,6 +3057,10 @@ function spiHelperNormalizeUsername (username) {
 async function spiHelperParseArchiveNotice (page) {
   const pagetext = await spiHelperGetPageText(page, false)
   const match = spiHelperArchiveNoticeRegex.exec(pagetext)
+  if (match === null) {
+    console.error("Missing archive notice")
+    return {username: null, deny: null, xwiki: null, notalk: null}
+  }
   const username = match[1]
   let deny = false
   let xwiki = false
