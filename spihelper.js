@@ -52,6 +52,9 @@ importScript('User:Timotheus Canens/displaymessage.js')
   */
 
 // Globals
+
+/* User setting related globals */
+
 // User-configurable settings, these are the defaults but will be updated by
 // spiHelperLoadSettings()
 const spiHelperSettings = {
@@ -100,6 +103,8 @@ const spiHelperValidSettings = {
   debugForceAdminState: [null, true, false]
 }
 
+/* Globals to describe the current SPI page */
+
 /** @type {string} Name of the SPI page in wiki title form
  * (e.g. Wikipedia:Sockpuppet investigations/Test) */
 let spiHelperPageName = mw.config.get('wgPageName').replace(/_/g, ' ')
@@ -109,7 +114,7 @@ let spiHelperPageName = mw.config.get('wgPageName').replace(/_/g, ' ')
  */
 let spiHelperStartingRevID = mw.config.get('wgCurRevisionId')
 
-// Just the username part of the case
+/** @type {string} Just the username part of the case */
 let spiHelperCaseName
 
 /** list of section IDs + names corresponding to separate investigations */
@@ -148,7 +153,15 @@ const spiHelperGlobalLocks = []
 
 // Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page)
 let spiHelperUserCount = 0
-const spiHelperSectionRegex = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m
+
+// The current wiki's interwiki prefix
+const spiHelperInterwikiPrefix = spiHelperGetInterwikiPrefix()
+
+// Map of active operations (used as a "dirty" flag for beforeunload)
+// Values are strings representing the state - acceptable values are 'running', 'success', 'failed'
+const spiHelperActiveOperations = new Map()
+
+/* Globals to describe possible options for dropdown menus */
 
 /** @type {SelectOption[]} List of possible selections for tagging a user in the block/tag interface
  */
@@ -200,6 +213,8 @@ const spiHelperAdminTemplates = [
   { label: 'Locks requested', selected: false, value: '{{GlobalLocksRequested}}' }
 ]
 
+/* Globals for regexes */
+
 // Regex to match the case status, group 1 is the actual status
 const spiHelperCaseStatusRegex = /{{\s*SPI case status\s*\|?\s*(\S*?)\s*}}/i
 // Regex to match closed case statuses (close or closed)
@@ -217,20 +232,16 @@ const spiHelperArchiveNoticeRegex = /{{\s*SPI\s*archive notice\|(?:1=)?([^|]*?)(
 
 const spiHelperPriorCasesRegex = /{{spipriorcases}}/i
 
+const spiHelperSectionRegex = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m
+
 // regex to remove hidden characters from form inputs - they mess up some things,
 // especially mw.util.isIP
 const spiHelperHiddenCharNormRegex = /\u200E/g
 
+/** @type{string} Advert to append to the edit summary of edits */
 const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
 
-// The current wiki's interwiki prefix
-const spiHelperInterwikiPrefix = spiHelperGetInterwikiPrefix()
-
-// Map of active operations (used as a "dirty" flag for beforeunload)
-// Values are strings representing the state - acceptable values are 'running', 'success', 'failed'
-const spiHelperActiveOperations = new Map()
-
-// Actually put the portlets in place if needed
+/* Actually put the portlets in place if needed */
 if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/') &&
   !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/')) {
   mw.loader.load('mediawiki.user')
@@ -262,7 +273,7 @@ const spiHelperTopViewHTML = `
       <label for="spiHelper_Comment">Note/comment</label>
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
-      <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close")" />
+      <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
       <label for="spiHelper_Close">Close case</label>
     </li>
     <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
@@ -326,15 +337,7 @@ async function spiHelperInit () {
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
-  // Hide block and close from non-admin non-clerks
-  if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $topView).hide()
-  }
-
-  // Hide move and archive from non-clerks
-  if (!spiHelperIsClerk()) {
-    $('.spiHelper_clerkClass', $topView).hide()
-  }
+  updateForRole($topView)
 
   // Only show options suitable for the archive subpage when running on the archives
   if (spiHelperIsThisPageAnArchive) {
@@ -768,22 +771,26 @@ async function spiHelperGenerateForm () {
     spiHelperPerformActions()
   })
 
-  updateForRole()
+  updateForRole($actionView)
 }
 
-async function updateForRole () {
-  const $actionView = $('#spiHelper_actionViewDiv', document)
+/**
+ * Update the view for the roles of the person running the script
+ * by selectively hiding.
+ * view: @type JQuery object representing the class / id for the view
+ */
+async function updateForRole (view) {
   // Hide items based on role
   if (!spiHelperIsCheckuser()) {
     // Hide CU options from non-CUs
-    $('.spiHelper_cuClass', $actionView).hide()
+    $('.spiHelper_cuClass', view).hide()
   }
   if (!spiHelperIsAdmin()) {
     // Hide block options from non-admins
-    $('.spiHelper_adminClass', $actionView).hide()
+    $('.spiHelper_adminClass', view).hide()
   }
   if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $actionView).hide()
+    $('.spiHelper_adminClerkClass', view).hide()
   }
 }
 
