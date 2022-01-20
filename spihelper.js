@@ -115,7 +115,7 @@ let spiHelperPageName = mw.config.get('wgPageName').replace(/_/g, ' ')
 let spiHelperStartingRevID = mw.config.get('wgCurRevisionId')
 
 /** @type {string} Just the username part of the case */
-let spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+let spiHelperCaseName
 
 /** list of section IDs + names corresponding to separate investigations */
 let spiHelperCaseSections = []
@@ -128,6 +128,8 @@ let spiHelperSectionName = null
 
 /** @type {ParsedArchiveNotice} */
 let spiHelperArchiveNoticeParams
+
+let spiHelperIsThisPageAnArchive
 
 /** Map of top-level actions the user has selected */
 const spiHelperActionsSelected = {
@@ -241,8 +243,7 @@ const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihel
 
 /* Actually put the portlets in place if needed */
 if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/') &&
-  !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/') &&
-  !mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')) {
+  !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/')) {
   mw.loader.load('mediawiki.user')
   $(spiHelperAddLink)
 }
@@ -255,11 +256,11 @@ const spiHelperTopViewHTML = `
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
   <ul>
-    <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
+    <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
       <label for="spiHelper_Case_Action">Change case status</label>
     </li>
-    <li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly">
+    <li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly spiHelper_notOnArchive">
       <input type="checkbox" id="spiHelper_SpiMgmt" />
       <label for="spiHelper_SpiMgmt">Change SPI options</label>
     </li>
@@ -267,24 +268,24 @@ const spiHelperTopViewHTML = `
       <input type="checkbox" name="spiHelper_BlockTag" id="spiHelper_BlockTag" />
       <label for="spiHelper_BlockTag">Block/tag socks</label>
     </li>
-    <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly">
+    <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
       <label for="spiHelper_Comment">Note/comment</label>
     </li>
-    <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly">
+    <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
       <label for="spiHelper_Close">Close case</label>
     </li>
-    <li id="spiHelper_moveLine" class="spiHelper_clerkClass">
+    <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
       <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case (Clerk only)</label>
     </li>
-    <li id="spiHelper_archiveLine" class="spiHelper_clerkClass">
+    <li id="spiHelper_archiveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
       <label for="spiHelper_Archive">Archive case (Clerk only)</label>
     </li>
   </ul>
-  <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" onclick="spiHelperGenerateForm()" />
+  <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" />
 </div>
 `
 
@@ -293,10 +294,16 @@ const spiHelperTopViewHTML = `
  */
 async function spiHelperInit () {
   'use strict'
+  spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
+  if (spiHelperIsThisPageAnArchive) {
+    spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '').replace(/\/Archive/, '')
+  } else {
+    spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+  }
   spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
 
   // Load archivenotice params
-  spiHelperArchiveNoticeParams = await spiHelperParseArchiveNotice(spiHelperPageName)
+  spiHelperArchiveNoticeParams = await spiHelperParseArchiveNotice(spiHelperPageName.replace(/\/Archive/, ''))
 
   // First, insert the template text
   displayMessage(spiHelperTopViewHTML)
@@ -332,8 +339,16 @@ async function spiHelperInit () {
 
   updateForRole($topView)
 
+  // Only show options suitable for the archive subpage when running on the archives
+  if (spiHelperIsThisPageAnArchive) {
+    $('.spiHelper_notOnArchive', $topView).hide()
+  }
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
+
+  $('#spiHelper_GenerateForm', $topView).one('click', () => {
+    spiHelperGenerateForm()
+  })
 }
 
 const spiHelperActionViewHTML = `
@@ -479,7 +494,6 @@ async function spiHelperGenerateForm () {
   'use strict'
   spiHelperUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
-  $('#spiHelper_GenerateForm', $topView).prop('disabled', true)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
   spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
@@ -502,7 +516,7 @@ async function spiHelperGenerateForm () {
   const $actionView = $('#spiHelper_actionViewDiv', document)
 
   // Wire up the action view
-  $('#spiHelper_backLink', $actionView).on('click', () => {
+  $('#spiHelper_backLink', $actionView).one('click', () => {
     spiHelperInit()
   })
   if (spiHelperActionsSelected.Case_act) {
@@ -715,8 +729,8 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_archiveView', $actionView).hide()
   }
 
-  // Only give the option to comment if we selected a specific section
-  if (spiHelperSectionId) {
+  // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
+  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
     // generate the note prefixes
     /** @type {SelectOption[]} */
     const spiHelperNoteTemplates = [
@@ -753,7 +767,7 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_commentView', $actionView).hide()
   }
   // Wire up the submit button
-  $('#spiHelper_performActions', $actionView).on('click', () => {
+  $('#spiHelper_performActions', $actionView).one('click', () => {
     spiHelperPerformActions()
   })
 
@@ -837,7 +851,7 @@ async function spiHelperPerformActions () {
     spiHelperArchiveNoticeParams.xwiki = $('#spiHelper_spiMgmt_crosswiki', $actionView).prop('checked')
     spiHelperArchiveNoticeParams.notalk = $('#spiHelper_spiMgmt_notalk', $actionView).prop('checked')
   }
-  if (spiHelperSectionId) {
+  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
     comment = $('#spiHelper_CommentText', $actionView).val().toString()
   }
   if (spiHelperActionsSelected.Block) {
@@ -939,10 +953,10 @@ async function spiHelperPerformActions () {
   }
   logMessage += ' ~~~~~'
 
-  if (spiHelperSectionId !== null) {
+  if (spiHelperSectionId !== null && !spiHelperIsThisPageAnArchive) {
     let caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
     if (caseStatusResult === null) {
-      sectionText = sectionText.replace('===', '{{SPI case status|}}\n===')
+      sectionText = sectionText.replace(/^(\s*===.*===[^\S\r\n]*)/, '$1\n{{SPI case status|}}')
       caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
     }
     const oldCaseStatus = caseStatusResult[1] || 'open'
@@ -1391,7 +1405,7 @@ async function spiHelperPerformActions () {
       }
     }
   }
-  if (spiHelperSectionId && comment && comment !== '*') {
+  if (spiHelperSectionId && comment && comment !== '*' && !spiHelperIsThisPageAnArchive) {
     if (!sectionText.includes('\n----')) {
       sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
     }
@@ -1425,7 +1439,7 @@ async function spiHelperPerformActions () {
     }
     logMessage += '\n** closed case'
   }
-  if (spiHelperSectionId !== null) {
+  if (spiHelperSectionId !== null && !spiHelperIsThisPageAnArchive) {
     const caseStatusText = spiHelperCaseStatusRegex.exec(sectionText)[0]
     sectionText = sectionText.replace(caseStatusText, '{{SPI case status|' + newCaseStatus + '}}')
   }
@@ -1435,16 +1449,18 @@ async function spiHelperPerformActions () {
     editsummary = 'Saving page'
   }
 
-  // Make all of the requested edits (synchronous since we might make more changes to the page)
-  const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
-    spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, spiHelperSectionId)
-  if (!editResult) {
-    // Page edit failed (probably an edit conflict), dump the comment if we had one
-    if (comment && comment !== '*') {
-      $('<li>')
-        .append($('<div>').addClass('spihelper-errortext')
-          .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
-        .appendTo($('#spiHelper_status', document))
+  // Make all of the requested edits (synchronous since we might make more changes to the page), unless the page is an archive (as there should be no edits made)
+  if (!spiHelperIsThisPageAnArchive) {
+    const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
+      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, spiHelperSectionId)
+    if (!editResult) {
+      // Page edit failed (probably an edit conflict), dump the comment if we had one
+      if (comment && comment !== '*') {
+        $('<li>')
+          .append($('<div>').addClass('spihelper-errortext')
+            .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
+          .appendTo($('#spiHelper_status', document))
+      }
     }
   }
   // Update to the latest revision ID
@@ -1522,6 +1538,26 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   'use strict'
   const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams) + '\n{{SPIpriorcases}}'
   const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+
+  // Update previous SPI redirects to this location
+  const pagesChecked = []
+  const pagesToCheck = [oldCasePage]
+  let currentPageToCheck = null
+  while (pagesToCheck.length !== 0) {
+    currentPageToCheck = pagesToCheck.pop()
+    let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
+    backlinks = backlinks.filter((dictEntry) => {
+      return spiHelperParseArchiveNotice(dictEntry.title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+    })
+    backlinks.forEach((dictEntry) => {
+      spiHelperEditPage(dictEntry.title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+    })
+    pagesChecked.append(currentPageToCheck)
+    backlinks = backlinks.filter((dictEntry) => {
+      return pagesChecked.indexOf(dictEntry.title) === -1
+    })
+    pagesToCheck.conct(backlinks)
+  }
 
   // The old case should just be the archivenotice template and point to the new case
   spiHelperEditPage(oldCasePage, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
@@ -2474,6 +2510,31 @@ async function spiHelperGetInvestigationSectionIDs () {
     }
   }
   return dateSections
+}
+
+/**
+ * Get SPI page backlinks to this SPI page.
+ * Used to fix double redirects when merging cases.
+ */
+async function spiHelperGetSPIBacklinks (casePageName) {
+  // Only looking for enwiki backlinks
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      list: 'backlinks',
+      bltitle: casePageName,
+      blnamespace: '4',
+      bldir: 'ascending',
+      blfilterredir: 'nonredirects'
+    })
+    return response.query.backlinks.filter((dictEntry) => {
+      return dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/') && !dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !dictEntry.title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
+    })
+  } catch (error) {
+    return []
+  }
 }
 
 /**
