@@ -314,7 +314,7 @@ async function spiHelperInit () {
     if (pagetext.indexOf('__TOC__') === -1) {
       pagetext = '<noinclude>__TOC__</noinclude>\n' + pagetext
     }
-    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice', false, spiHelperSettings.watchCase, watchExpiry = spiHelperSettings.watchCaseExpiry)
+    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
   }
 
   // Next, modify what's displayed
