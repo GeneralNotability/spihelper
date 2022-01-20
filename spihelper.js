@@ -297,12 +297,15 @@ async function spiHelperInit () {
   // First, insert the template text
   displayMessage(spiHelperTopViewHTML)
 
-  if(spiHelperArchiveNoticeParams.username === null) {
+  // Narrow search scope
+  const $topView = $('#spiHelper_topViewDiv', document)
+
+  if (spiHelperArchiveNoticeParams.username === null) {
     // No archive notice was found
     const $warningText = $('#spiHelper_warning', $topView)
     $warningText.show()
     $warningText.append($('<b>').text('Can\'t find archivenotice template! Automatically adding the archive notice to the page.'))
-    newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, {xwiki: false, deny: false, notalk: false})
+    const newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, { xwiki: false, deny: false, notalk: false })
     let pagetext = await spiHelperGetPageText(spiHelperPageName, false)
     if (spiHelperPriorCasesRegex.exec(pagetext) === null) {
       pagetext = '{{SPIpriorcases}}\n' + pagetext
@@ -311,11 +314,8 @@ async function spiHelperInit () {
     if (pagetext.indexOf('__TOC__') === -1) {
       pagetext = '<noinclude>__TOC__</noinclude>\n' + pagetext
     }
-    await spiHelperEditPage(spiHelperPageName, pagetext, "Adding archive notice", false, spiHelperSettings.watchCase, watchExpiry = spiHelperSettings.watchCaseExpiry)
+    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice', false, spiHelperSettings.watchCase, watchExpiry = spiHelperSettings.watchCaseExpiry)
   }
-
-  // Narrow search scope
-  const $topView = $('#spiHelper_topViewDiv', document)
 
   // Next, modify what's displayed
   // Set the block selection label based on whether or not the user is an admin
@@ -3058,8 +3058,8 @@ async function spiHelperParseArchiveNotice (page) {
   const pagetext = await spiHelperGetPageText(page, false)
   const match = spiHelperArchiveNoticeRegex.exec(pagetext)
   if (match === null) {
-    console.error("Missing archive notice")
-    return {username: null, deny: null, xwiki: null, notalk: null}
+    console.error('Missing archive notice')
+    return { username: null, deny: null, xwiki: null, notalk: null }
   }
   const username = match[1]
   let deny = false
