@@ -301,7 +301,7 @@ async function spiHelperInit () {
     // No archive notice was found
     const $warningText = $('#spiHelper_warning', $topView)
     $warningText.show()
-    $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
+    $warningText.append($('<b>').text('Can\'t find archivenotice template! Automatically adding the archive notice to the page.'))
     newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, {xwiki: false, deny: false, notalk: false})
     let pagetext = await spiHelperGetPageText(spiHelperPageName, false)
     if (spiHelperPriorCasesRegex.exec(pagetext) === null) {
