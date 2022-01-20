@@ -1532,6 +1532,26 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams) + '\n{{SPIpriorcases}}'
   const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '')
 
+  // Update previous SPI redirects to this location
+  const pagesChecked = []
+  const pagesToCheck = [oldCasePage]
+  let currentPageToCheck = null
+  while (pagesToCheck.length !== 0) {
+    currentPageToCheck = pagesToCheck.pop()
+    let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
+    backlinks = backlinks.filter((dictEntry) => {
+      return spiHelperParseArchiveNotice(dictEntry.title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+    })
+    backlinks.forEach((dictEntry) => {
+      spiHelperEditPage(dictEntry.title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+    })
+    pagesChecked.append(currentPageToCheck)
+    backlinks = backlinks.filter((dictEntry) => {
+      return pagesChecked.indexOf(dictEntry.title) === -1
+    })
+    pagesToCheck.conct(backlinks)
+  }
+
   // The old case should just be the archivenotice template and point to the new case
   spiHelperEditPage(oldCasePage, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
 
@@ -2483,6 +2503,31 @@ async function spiHelperGetInvestigationSectionIDs () {
     }
   }
   return dateSections
+}
+
+/**
+ * Get SPI page backlinks to this SPI page.
+ * Used to fix double redirects when merging cases.
+ */
+async function spiHelperGetSPIBacklinks (casePageName) {
+  // Only looking for enwiki backlinks
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      list: 'backlinks',
+      bltitle: casePageName,
+      blnamespace: '4',
+      bldir: 'ascending',
+      blfilterredir: 'nonredirects'
+    })
+    return response.query.backlinks.filter((dictEntry) => {
+      return dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/') && !dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !dictEntry.title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
+    })
+  } catch (error) {
+    return []
+  }
 }
 
 /**
