@@ -616,6 +616,13 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_spiMgmtView', $actionView).hide()
   }
 
+  if (!spiHelperActionsSelected.Close) {
+    $('#spiHelper_closeView', $actionView).hide()
+  }
+  if (!spiHelperActionsSelected.Archive) {
+    $('#spiHelper_archiveView', $actionView).hide()
+  }
+
   if (spiHelperActionsSelected.Block) {
     if (spiHelperIsAdmin()) {
       $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
@@ -709,9 +716,6 @@ async function spiHelperGenerateForm () {
   } else {
     $('#spiHelper_blockTagView', $actionView).hide()
   }
-  if (!spiHelperActionsSelected.Close) {
-    $('#spiHelper_closeView', $actionView).hide()
-  }
   if (spiHelperActionsSelected.Rename) {
     if (spiHelperSectionId) {
       $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
@@ -720,10 +724,6 @@ async function spiHelperGenerateForm () {
     }
   } else {
     $('#spiHelper_moveView', $actionView).hide()
-  }
-
-  if (!spiHelperActionsSelected.Archive) {
-    $('#spiHelper_archiveView', $actionView).hide()
   }
 
   // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
