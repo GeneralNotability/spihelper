@@ -258,7 +258,7 @@ const spiHelperTopViewHTML = `
   <ul>
     <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
-      <label for="spiHelper_Case_Action">Change case status<span class="spiHelper_pluralAddition">es</span></label>
+      <label for="spiHelper_Case_Action">Change case status<span class="spiHelper_forSomeCases">es</span></label>
     </li>
     <li id="spiHelper_spiMgmtLine" class="spiHelper_allCasesOnly spiHelper_notOnArchive">
       <input type="checkbox" id="spiHelper_SpiMgmt" />
@@ -274,15 +274,15 @@ const spiHelperTopViewHTML = `
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
-      <label for="spiHelper_Close">Close case<span class="spiHelper_pluralAddition">s</span></label>
+      <label for="spiHelper_Close">Close case<span class="spiHelper_forSomeCases">s</span></label>
     </li>
-    <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive spiHelper_notForSomeCasesOption">
+    <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
-      <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case (Clerk only)</label>
+      <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case<span class="spiHelper_forSomeCases">s</span> (Clerk only)</label>
     </li>
     <li id="spiHelper_archiveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
-      <label for="spiHelper_Archive">Archive case<span class="spiHelper_pluralAddition">s</span> (Clerk only)</label>
+      <label for="spiHelper_Archive">Archive case<span class="spiHelper_forSomeCases">s</span> (Clerk only)</label>
     </li>
   </ul>
   <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" />
@@ -465,22 +465,26 @@ const spiHelperActionViewHTML = `
     <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
   </div>
   <div id="spiHelper_closeView">
-    <h4>Marking case as closed</h4>
+    <h4>Marking case<span class="spiHelper_forSomeCases">s</span> as closed</h4>
     <input type="checkbox" checked="checked" id="spiHelper_CloseCase" />
     <label for="spiHelper_CloseCase">Close this SPI case</label>
   </div>
   <div id="spiHelper_moveView">
-    <h4 id="spiHelper_moveHeader">Move section</h4>
+    <h4 id="spiHelper_moveHeader">Move section<span class="spiHelper_forSomeCases">s</span></h4>
     <label for="spiHelper_moveTarget">New sockmaster username: </label>
     <input type="text" name="spiHelper_moveTarget" id="spiHelper_moveTarget" />
   </div>
   <div id="spiHelper_archiveView">
-    <h4>Archiving case</h4>
+    <h4>Archiving case<span class="spiHelper_forSomeCases">s</span></h4>
     <input type="checkbox" checked="checked" name="spiHelper_ArchiveCase" id="spiHelper_ArchiveCase" />
-    <label for="spiHelper_ArchiveCase">Archive this SPI case</label>
+    <label for="spiHelper_ArchiveCase">Archive th<span class="spiHelper_notForSomeCases">is</span><span class="spiHelper_forSomeCases">se</span> SPI case<span class="spiHelper_forSomeCases">s</span></label>
   </div>
   <div id="spiHelper_commentView">
     <h4>Comments</h4>
+    <li class="spiHelper_forSomeCases">
+      <input type="checkbox" name="spiHelper_duplicateComment" id="spiHelper_duplicateComment" />
+      <label for="spiHelper_duplicateComment">Add the comment to every selected section.</label>
+    </li>
     <span>
       <select id="spiHelper_noteSelect"></select>
       <select class="spiHelper_adminClerkClass" id="spiHelper_adminSelect"></select>
@@ -2698,14 +2702,16 @@ async function spiHelperSetCheckboxesBySection () {
     // Hide options that shouldn't be shown in the "Some Sections" option.
     $('.spiHelper_notForSomeCasesOption', $topView).hide()
     // Update the options so that they are plural
-    $('.spiHelper_pluralAddition', $topView).show()
+    $('.spiHelper_forSomeCases', $topView).show()
+    $('.spiHelper_notForSomeCases', $topView).hide()
   } else if (spiHelperSectionId === null) {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
     // Show inputs only visible in all-case mode
     $('.spiHelper_allCasesOnly', $topView).show()
     // Update the options so that they are plural
-    $('.spiHelper_pluralAddition', $topView).show()
+    $('.spiHelper_forSomeCases', $topView).show()
+    $('.spiHelper_notForSomeCases', $topView).hide()
     // Fix the move label
     $('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)')
     // enable the move box
@@ -2721,8 +2727,6 @@ async function spiHelperSetCheckboxesBySection () {
     $('.spiHelper_singleCaseOnly', $topView).show()
     // Hide inputs only visible in all-case mode
     $('.spiHelper_allCasesOnly', $topView).hide()
-    // Update the options so that they are not plural
-    $('.spiHelper_pluralAddition', $topView).hide()
 
     const result = spiHelperCaseStatusRegex.exec(sectionText)
     let casestatus = ''
@@ -2748,9 +2752,13 @@ async function spiHelperSetCheckboxesBySection () {
     }
 
     // Change the label on the rename button
-    $('#spiHelper_moveLabel', $topView).html('Move case section (<span title="You probably want to move the full case, ' +
+    $('#spiHelper_moveLabel', $topView).html('Move case section<span class="spiHelper_forSomeCases">s</span> (<span title="You probably want to move the full case, ' +
       'select All Sections instead of a specific date in the drop-down"' +
       'class="rt-commentedText spihelper-hovertext"><b>READ ME FIRST</b></span>)')
+    
+    // Update the options so that they are not plural
+    $('.spiHelper_forSomeCases', $topView).hide()
+    $('.spiHelper_notForSomeCases', $topView).show()
   }
   // Only show options suitable for the archive subpage when running on the archives
   if (spiHelperIsThisPageAnArchive) {
