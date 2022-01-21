@@ -256,11 +256,11 @@ const spiHelperTopViewHTML = `
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
   <ul>
-    <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
+    <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
       <label for="spiHelper_Case_Action">Change case status</label>
     </li>
-    <li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly spiHelper_notOnArchive">
+    <li id="spiHelper_spiMgmtLine" class="spiHelper_allCasesOnly spiHelper_notOnArchive">
       <input type="checkbox" id="spiHelper_SpiMgmt" />
       <label for="spiHelper_SpiMgmt">Change SPI options</label>
     </li>
@@ -276,7 +276,7 @@ const spiHelperTopViewHTML = `
       <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
       <label for="spiHelper_Close">Close case</label>
     </li>
-    <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
+    <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive spiHelper_notForSomeCasesOption">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
       <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case (Clerk only)</label>
     </li>
@@ -312,7 +312,7 @@ async function spiHelperInit () {
   const $topView = $('#spiHelper_topViewDiv', document)
 
   if (spiHelperArchiveNoticeParams.username === null) {
-    // No archive notice was found
+    // No archive notice was found. Add it before we can continue.
     const $warningText = $('#spiHelper_warning', $topView)
     $warningText.show()
     $warningText.append($('<b>').text('Can\'t find archivenotice template! Automatically adding the archive notice to the page.'))
@@ -325,7 +325,7 @@ async function spiHelperInit () {
     if (pagetext.indexOf('__TOC__') === -1) {
       pagetext = '<noinclude>__TOC__</noinclude>\n' + pagetext
     }
-    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice automatically', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
   }
 
   // Next, modify what's displayed
@@ -351,15 +351,13 @@ async function spiHelperInit () {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
   }
+  // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
+  $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
   updateForRole($topView)
 
-  // Only show options suitable for the archive subpage when running on the archives
-  if (spiHelperIsThisPageAnArchive) {
-    $('.spiHelper_notOnArchive', $topView).hide()
-  }
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
 
@@ -2651,7 +2649,7 @@ async function spiHelperSetCheckboxesBySection () {
 
   const $topView = $('#spiHelper_topViewDiv', document)
   // Get the value of the selection box
-  if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
+  if ($('#spiHelper_sectionSelect', $topView).val() === 'all' || $('#spiHelper_sectionSelect', $topView).val() === 'some') {
     spiHelperSectionId = null
     spiHelperSectionName = null
   } else {
@@ -2691,9 +2689,18 @@ async function spiHelperSetCheckboxesBySection () {
   if (!result) {
     $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
     $warningText.show()
-  }
+  } 
 
-  if (spiHelperSectionId === null) {
+  if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
+    // Some of the all case options are relevant to "Some sections"
+    $('.spiHelper_singleCaseOnly', $topView).show()
+    // None of the all case options are relevant to "Some sections"
+    $('.spiHelper_allCasesOnly', $topView).hide()
+    // Hide options that shouldn't be shown in the "Some Sections" option.
+    $('.spiHelper_notForSomeCasesOption', $topView).hide()
+    // Update the options so that they ar plural where needed
+    $('#spiHelper_', $topView).text('Move/merge full case (Clerk only)')
+  } else if (spiHelperSectionId === null) {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
     // Show inputs only visible in all-case mode
