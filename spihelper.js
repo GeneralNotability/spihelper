@@ -2557,6 +2557,32 @@ async function spiHelperGetSPIBacklinks (casePageName) {
 }
 
 /**
+ * Get the page protection level for a SPI page.
+ * Used to keep the protection level after a history merge
+ */
+async function spiHelperGetProtectionInformation (casePageName) {
+  // Only looking for enwiki protection information
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      prop: 'info|flagged',
+      titles: casePageName,
+      inprop: 'protection'
+    })
+    const entry = response.query.pages[Object.keys(response.query.pages)[0]]
+    if ('flagged' in entry) {
+      return entry.protection.concat([{ type: 'flagged', protection_level: entry.flagged.protection_level, protection_expiry: entry.flagged.protection_expiry}])
+    } else {
+      return entry.protection
+    }
+  } catch (error) {
+    return []
+  }
+}
+
+/**
  * Pretty obvious - gets the name of the archive. This keeps us from having to regen it
  * if we rename the case
  *
