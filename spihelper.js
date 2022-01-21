@@ -1823,7 +1823,7 @@ async function spiHelperMoveCase (target) {
       } else if (newPageNameEntry.length > 0) {
         newProtectionValues.append(newPageNameEntry[0])
       } else {
-        console.error("Invalid protection type given by API")
+        // No protection with this type on either page, so simply return to look at the next type.
         return
       }
     })
