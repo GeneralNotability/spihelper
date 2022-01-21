@@ -258,7 +258,7 @@ const spiHelperTopViewHTML = `
   <ul>
     <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
-      <label for="spiHelper_Case_Action">Change case status</label>
+      <label for="spiHelper_Case_Action">Change case status<span class="spiHelper_pluralAddition">es</span></label>
     </li>
     <li id="spiHelper_spiMgmtLine" class="spiHelper_allCasesOnly spiHelper_notOnArchive">
       <input type="checkbox" id="spiHelper_SpiMgmt" />
@@ -274,7 +274,7 @@ const spiHelperTopViewHTML = `
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
-      <label for="spiHelper_Close">Close case</label>
+      <label for="spiHelper_Close">Close case<span class="spiHelper_pluralAddition">s</span></label>
     </li>
     <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive spiHelper_notForSomeCasesOption">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
@@ -282,7 +282,7 @@ const spiHelperTopViewHTML = `
     </li>
     <li id="spiHelper_archiveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
-      <label for="spiHelper_Archive">Archive case (Clerk only)</label>
+      <label for="spiHelper_Archive">Archive case<span class="spiHelper_pluralAddition">s</span> (Clerk only)</label>
     </li>
   </ul>
   <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" />
@@ -2689,8 +2689,7 @@ async function spiHelperSetCheckboxesBySection () {
   if (!result) {
     $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
     $warningText.show()
-  } 
-
+  }
   if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
     // Some of the all case options are relevant to "Some sections"
     $('.spiHelper_singleCaseOnly', $topView).show()
@@ -2698,13 +2697,15 @@ async function spiHelperSetCheckboxesBySection () {
     $('.spiHelper_allCasesOnly', $topView).hide()
     // Hide options that shouldn't be shown in the "Some Sections" option.
     $('.spiHelper_notForSomeCasesOption', $topView).hide()
-    // Update the options so that they ar plural where needed
-    $('#spiHelper_', $topView).text('Move/merge full case (Clerk only)')
+    // Update the options so that they are plural
+    $('.spiHelper_pluralAddition', $topView).show()
   } else if (spiHelperSectionId === null) {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
     // Show inputs only visible in all-case mode
     $('.spiHelper_allCasesOnly', $topView).show()
+    // Update the options so that they are plural
+    $('.spiHelper_pluralAddition', $topView).show()
     // Fix the move label
     $('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)')
     // enable the move box
@@ -2720,6 +2721,8 @@ async function spiHelperSetCheckboxesBySection () {
     $('.spiHelper_singleCaseOnly', $topView).show()
     // Hide inputs only visible in all-case mode
     $('.spiHelper_allCasesOnly', $topView).hide()
+    // Update the options so that they are not plural
+    $('.spiHelper_pluralAddition', $topView).hide()
 
     const result = spiHelperCaseStatusRegex.exec(sectionText)
     let casestatus = ''
