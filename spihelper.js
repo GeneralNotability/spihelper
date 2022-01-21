@@ -1788,7 +1788,23 @@ async function spiHelperMoveCase (target) {
     // Now get existing protection levels on the target and existing page.
     const oldPageNameProtection = spiHelperGetProtectionInformation(oldPageName)
     const newPageNameProtection = spiHelperGetProtectionInformation(spiHelperPageName)
-    
+    /* TODO: Needs work
+    const combinedProtectionInformation = []
+    const combinedProtectionTypes = {}
+    const oldPageNameProtectionTypes = {}
+    const newPageNameProtectionTypes = {}
+    oldPageNameProtection.forEach((dict) => {
+      oldPageNameProtectionTypes.push({ dict.type: dict })
+    })
+    newPageNameProtection.forEach((dict) => {
+      newPageNameProtectionTypes.push({ dict.type: dict })
+    })
+    Object.keys(oldPageNameProtectionTypes).forEach((type) => {
+      if (type in Object.keys(newPageNameProtectionTypes)) {
+        oldPageNameProtection
+      }
+    }) */
+
     // Ignore warnings on the move, we're going to get one since we're stomping an existing page
     await spiHelperDeletePage(spiHelperPageName, 'Deleting as part of case merge')
     await spiHelperMovePage(oldPageName, spiHelperPageName, 'Merging case to [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]', true)
