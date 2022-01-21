@@ -1785,6 +1785,10 @@ async function spiHelperMoveCase (target) {
       await spiHelperDeletePage(oldArchiveName, 'Deleting copied archive')
       archivesCopied = true
     }
+    // Now get existing protection levels on the target and existing page.
+    const oldPageNameProtection = spiHelperGetProtectionInformation(oldPageName)
+    const newPageNameProtection = spiHelperGetProtectionInformation(spiHelperPageName)
+    
     // Ignore warnings on the move, we're going to get one since we're stomping an existing page
     await spiHelperDeletePage(spiHelperPageName, 'Deleting as part of case merge')
     await spiHelperMovePage(oldPageName, spiHelperPageName, 'Merging case to [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]', true)
@@ -2579,6 +2583,71 @@ async function spiHelperGetProtectionInformation (casePageName) {
     }
   } catch (error) {
     return []
+  }
+}
+
+async function spiHelperProtectPage (casePageName, protections) {
+  // Only lookint to protect pages on enwiki
+
+  const activeOpKey = 'protect_' + title
+  spiHelperActiveOperations.set(activeOpKey, 'running')
+
+  const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+  const $link = $('<a>').attr('href', mw.util.getUrl(title)).attr('title', title).text(title)
+  $statusLine.html('Protecting ' + $link.prop('outerHTML'))
+
+  const api = new mw.Api()
+  try {
+    let protectlevelinfo = ''
+    let expiryinfo = ''
+    protections.forEach((dict) => {
+      if (dict.type === 'flagged') {
+        spiHelperConfigurePendingChanges(casePageName, dict.protection_level, dict.protection_expiry)
+      } else {
+        if (protectlevelinfo !== '') {
+          protectlevelinfo = protectlevelinfo + "|"
+          expiryinfo = expiryinfo + "|"
+        }
+        protectlevelinfo = protectlevelinfo + dict.type + "=" + dict.level
+        expiryinfo = expiryinfo + dict.expiry
+      }
+    })
+    await api.postWithToken('csrf', {
+      action: 'protect',
+      format: 'json',
+      titles: casePageName,
+      protections: protectlevelinfo,
+      expiry: expiryinfo,
+      reason: 'Restoring protection after history merge'
+    })
+    $statusLine.html('Protected ' + $link.prop('outerHTML'))
+    spiHelperActiveOperations.set(activeOpKey, 'success')
+  } catch (error) {
+    $statusLine.addClass('spihelper-errortext').html('<b>Failed to protect ' + $link.prop('outerHTML') + '</b>: ' + error)
+    spiHelperActiveOperations.set(activeOpKey, 'failed')
+  }
+}
+
+
+async function spiHelperConfigurePendingChanges (casePageName, protection_level, protection_expiry) {
+  // Only lookint to protect pages on enwiki
+
+  const activeOpKey = 'stabilize_' + title
+  spiHelperActiveOperations.set(activeOpKey, 'running')
+
+  const api = new mw.Api()
+  try {
+    await api.postWithToken('csrf', {
+      action: 'stabilize',
+      format: 'json',
+      titles: casePageName,
+      protectlevel: protection_level,
+      expiry: protection_expiry,
+      reason: 'Restoring pending changes protection after history merge'
+    })
+    spiHelperActiveOperations.set(activeOpKey, 'success')
+  } catch (error) {
+    spiHelperActiveOperations.set(activeOpKey, 'failed')
   }
 }
 
