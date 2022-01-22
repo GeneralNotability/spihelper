@@ -121,7 +121,7 @@ let spiHelperCaseName
 let spiHelperCaseSections = []
 
 /** @type {?number} Selected section, "null" as the first element means that we're opearting on the entire page or in selected sections mode */
-let spiHelperSectionIds = [null]
+let spiHelperSectionId = [null]
 
 /** @type {?string} Selected section's name (e.g. "10 June 2020") */
 let spiHelperSectionName = [null]
@@ -257,7 +257,7 @@ const spiHelperTopViewHTML = `
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
   <div class="spiHelper_forSomeCases">
     <p>Select the cases you want to work on.</p>
-    <ul id="spiHelper_mutlipleSectionSelect"></ul>
+    <ul id="spiHelper_multipleSectionSelect"></ul>
   </div>
   <ul>
     <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
@@ -2666,9 +2666,7 @@ async function spiHelperSetCheckboxesBySection () {
     spiHelperSectionName = null
   } else if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
     spiHelperSectionId = []
-    $('#spiHelper_mutlipleSectionSelect', $topView).children().each((dict) => {
-      spiHelperSectionId.append(
-    })
+    spiHelperSectionName = []
   } else {
     spiHelperSectionId = parseInt($('#spiHelper_sectionSelect', $topView).val().toString())
     const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
@@ -2712,8 +2710,6 @@ async function spiHelperSetCheckboxesBySection () {
     $('.spiHelper_singleCaseOnly', $topView).show()
     // None of the all case options are relevant to "Some sections"
     $('.spiHelper_allCasesOnly', $topView).hide()
-    // Hide options that shouldn't be shown in the "Some Sections" option.
-    $('.spiHelper_notForSomeCasesOption', $topView).hide()
     // Update the options so that they are plural
     $('.spiHelper_forSomeCases', $topView).show()
     $('.spiHelper_notForSomeCases', $topView).hide()
@@ -2723,8 +2719,8 @@ async function spiHelperSetCheckboxesBySection () {
     // Show inputs only visible in all-case mode
     $('.spiHelper_allCasesOnly', $topView).show()
     // Update the options so that they are plural
-    $('.spiHelper_forSomeCases', $topView).show()
-    $('.spiHelper_notForSomeCases', $topView).hide()
+    $('.spiHelper_forSomeCases', $topView).hide()
+    $('.spiHelper_notForSomeCases', $topView).show()
     // Fix the move label
     $('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)')
     // enable the move box
