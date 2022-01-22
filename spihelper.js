@@ -355,9 +355,9 @@ async function spiHelperInit () {
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
-    $('<li>').attr("id", "spiHelper_li_" + s.index.toString()).appendTo($multipleSectionSelect)
-    $('<input>').val(s.index)..attr("id", "spiHelper_input_" + s.index.toString()).appendTo($('#spiHelper_multipleSectionSelect li#' + "spiHelper_li_" + s.index.toString(), $topView))
-    $('<label>').text(s.line).attr('for', "spiHelper_input_" + s.index.toString()).appendTo($('#spiHelper_multipleSectionSelect li#' + "spiHelper_li_" + s.index.toString(), $topView))
+    let $li = $('<li>').attr("id", "spiHelper_li_" + s.index.toString()).appendTo($multipleSectionSelect)
+    $('<input type="checkbox">').val(s.index).attr("id", "spiHelper_input_" + s.index.toString()).appendTo($li)
+    $('<label>').text(s.line).attr('for', "spiHelper_input_" + s.index.toString()).appendTo($li)
   }
   // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
   $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
