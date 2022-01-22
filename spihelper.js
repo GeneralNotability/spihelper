@@ -238,6 +238,8 @@ const spiHelperSectionRegex = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m
 // especially mw.util.isIP
 const spiHelperHiddenCharNormRegex = /\u200E/g
 
+/* Other globals */
+
 /** @type{string} Advert to append to the edit summary of edits */
 const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
 
@@ -1785,6 +1787,71 @@ async function spiHelperMoveCase (target) {
       await spiHelperDeletePage(oldArchiveName, 'Deleting copied archive')
       archivesCopied = true
     }
+    // Now get existing protection levels on the target and existing page.
+    const oldPageNameProtection = spiHelperGetProtectionInformation(oldPageName)
+    const newPageNameProtection = spiHelperGetProtectionInformation(spiHelperPageName)
+    const newProtectionValues = []
+    const siteProtectionInformation = spiHelperGetSiteRestrictionInformation()
+    // First find if both the old page and new page had the same protection type enabled
+    siteProtectionInformation.types.forEach((type) => {
+      let oldPageNameEntry = oldPageNameProtection.filter((dict) => { return dict.type === type })
+      let newPageNameEntry = newPageNameProtection.filter((dict) => { return dict.type === type })
+      if (oldPageNameEntry.length > 0 && newPageNameEntry.length > 0) {
+        const newProtectionDict = { type: oldPageNameEntry.type }
+        oldPageNameEntry = oldPageNameEntry[0]
+        newPageNameEntry = newPageNameEntry[0]
+        if (newPageNameEntry.expiry === 'infinity' || oldPageNameEntry.expiry === 'infinity' || newPageNameEntry.expiry === 'infinite' || oldPageNameEntry.expiry === 'infinite') {
+          newProtectionDict.push({ expiry: 'infinite' })
+        } else if (newPageNameEntry.expiry < oldPageNameEntry.expiry) {
+          newProtectionDict.push({ expiry: oldPageNameEntry.expiry })
+        } else {
+          newProtectionDict.push({ expiry: newPageNameEntry.expiry })
+        }
+        const oldPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(oldPageNameEntry.level)
+        const newPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(newPageNameEntry.level)
+        if (oldPageNameEntryLevelIndex === -1 || newPageNameEntryLevelIndex === -1) {
+          console.error('Invalid protection information provided from API')
+          return
+        } else if (oldPageNameEntryLevelIndex > newPageNameEntryLevelIndex) {
+          newProtectionDict.push({ level: oldPageNameEntry.level })
+        } else if (oldPageNameEntryLevelIndex <= newPageNameEntryLevelIndex) {
+          newProtectionDict.push({ level: newPageNameEntry.level })
+        }
+        newProtectionValues.append(newProtectionDict)
+      } else if (oldPageNameEntry.length > 0) {
+        newProtectionValues.append(oldPageNameEntry[0])
+      } else if (newPageNameEntry.length > 0) {
+        newProtectionValues.append(newPageNameEntry[0])
+      }
+    })
+    // Now handle pending changes protection
+    const oldPageNameStabilisation = spiHelperGetStabilisationSettings(oldPageName)
+    const newPageNameStabilisation = spiHelperGetStabilisationSettings(spiHelperPageName)
+    let newStabilisationSettings = { protection_level: '' }
+    if (oldPageNameStabilisation !== false && newPageNameStabilisation !== false) {
+      // Pending changes is used on both pages
+      if (newPageNameStabilisation.protection_expiry === 'infinity' || oldPageNameStabilisation.protection_expiry === 'infinity' || newPageNameStabilisation.protection_expiry === 'infinite' || oldPageNameStabilisation.protection_expiry === 'infinite') {
+        newStabilisationSettings.push({ protection_expiry: 'infinite' })
+      } else if (newPageNameStabilisation.protection_expiry < oldPageNameStabilisation.expiry) {
+        newStabilisationSettings.push({ protection_expiry: oldPageNameStabilisation.protection_expiry })
+      } else {
+        newStabilisationSettings.push({ protection_expiry: newPageNameStabilisation.protection_expiry })
+      }
+      const oldPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(oldPageNameStabilisation.protection_level)
+      const newPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(newPageNameStabilisation.protection_level)
+      if (oldPageNameEntryLevelIndex === -1 || newPageNameEntryLevelIndex === -1) {
+        console.error('Invalid protection information provided from API')
+        return
+      } else if (oldPageNameEntryLevelIndex > newPageNameEntryLevelIndex) {
+        newStabilisationSettings.push({ level: oldPageNameStabilisation.protection_level })
+      } else if (oldPageNameEntryLevelIndex <= newPageNameEntryLevelIndex) {
+        newStabilisationSettings.push({ level: newPageNameStabilisation.protection_level })
+      }
+    } else if (oldPageNameStabilisation !== false) {
+      newStabilisationSettings = oldPageNameStabilisation
+    } else if (newPageNameStabilisation !== false) {
+      newStabilisationSettings = newPageNameStabilisation
+    }
     // Ignore warnings on the move, we're going to get one since we're stomping an existing page
     await spiHelperDeletePage(spiHelperPageName, 'Deleting as part of case merge')
     await spiHelperMovePage(oldPageName, spiHelperPageName, 'Merging case to [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]', true)
@@ -1793,6 +1860,16 @@ async function spiHelperMoveCase (target) {
       // Create a redirect
       spiHelperEditPage(oldArchiveName, '#REDIRECT [[' + newArchiveName + ']]', 'Redirecting old archive to new archive',
         false, spiHelperSettings.watchArchive, spiHelperSettings.watchArchiveExpiry)
+    }
+    // Now to protect both the oldPageName and newPageName with the protection settings in newProtectionDict, unless it is empty (i.e. no protection needed)
+    // Also apply any pending changes needed (i.e. if newStabilisationSettings has a non-empty protection_level)
+    if (newProtectionValues.length !== 0) {
+      spiHelperProtectPage(spiHelperPageName, newProtectionValues)
+      spiHelperProtectPage(oldPageName, newProtectionValues)
+    }
+    if (newStabilisationSettings.protection_level !== '') {
+      spiHelperConfigurePendingChanges(spiHelperPageName, newStabilisationSettings)
+      spiHelperConfigurePendingChanges(oldPageName, newStabilisationSettings)
     }
   } else {
     await spiHelperMovePage(oldPageName, spiHelperPageName, 'Moving case to [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]', false)
@@ -2551,6 +2628,127 @@ async function spiHelperGetSPIBacklinks (casePageName) {
     return response.query.backlinks.filter((dictEntry) => {
       return dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/') && !dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !dictEntry.title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
     })
+  } catch (error) {
+    return []
+  }
+}
+
+/**
+ * Get the page protection level for a SPI page.
+ * Used to keep the protection level after a history merge
+ */
+async function spiHelperGetProtectionInformation (casePageName) {
+  // Only looking for enwiki protection information
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      prop: 'info',
+      titles: casePageName,
+      inprop: 'protection'
+    })
+    return response.query.pages[Object.keys(response.query.pages)[0]].protection
+  } catch (error) {
+    return []
+  }
+}
+
+/**
+ * Gets stabilisation settings information for a page. If no pending changes exists then it returns false.
+ */
+async function spiHelperGetStabilisationSettings (casePageName) {
+  // Only looking for enwiki stabilisation information
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      prop: 'flagged',
+      titles: casePageName
+    })
+    const entry = response.query.pages[Object.keys(response.query.pages)[0]]
+    if ('flagged' in entry) {
+      return entry.flagged
+    } else {
+      return false
+    }
+  } catch (error) {
+    return false
+  }
+}
+
+async function spiHelperProtectPage (casePageName, protections) {
+  // Only lookint to protect pages on enwiki
+
+  const activeOpKey = 'protect_' + casePageName
+  spiHelperActiveOperations.set(activeOpKey, 'running')
+
+  const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+  const $link = $('<a>').attr('href', mw.util.getUrl(casePageName)).attr('title', casePageName).text(casePageName)
+  $statusLine.html('Protecting ' + $link.prop('outerHTML'))
+
+  const api = new mw.Api()
+  try {
+    let protectlevelinfo = ''
+    let expiryinfo = ''
+    protections.forEach((dict) => {
+      if (protectlevelinfo !== '') {
+        protectlevelinfo = protectlevelinfo + '|'
+        expiryinfo = expiryinfo + '|'
+      }
+      protectlevelinfo = protectlevelinfo + dict.type + '=' + dict.level
+      expiryinfo = expiryinfo + dict.expiry
+    })
+    await api.postWithToken('csrf', {
+      action: 'protect',
+      format: 'json',
+      titles: casePageName,
+      protections: protectlevelinfo,
+      expiry: expiryinfo,
+      reason: 'Restoring protection after history merge'
+    })
+    $statusLine.html('Protected ' + $link.prop('outerHTML'))
+    spiHelperActiveOperations.set(activeOpKey, 'success')
+  } catch (error) {
+    $statusLine.addClass('spihelper-errortext').html('<b>Failed to protect ' + $link.prop('outerHTML') + '</b>: ' + error)
+    spiHelperActiveOperations.set(activeOpKey, 'failed')
+  }
+}
+
+async function spiHelperConfigurePendingChanges (casePageName, protectionLevel, protectionExpiry) {
+  // Only lookint to protect pages on enwiki
+
+  const activeOpKey = 'stabilize_' + casePageName
+  spiHelperActiveOperations.set(activeOpKey, 'running')
+
+  const api = new mw.Api()
+  try {
+    await api.postWithToken('csrf', {
+      action: 'stabilize',
+      format: 'json',
+      titles: casePageName,
+      protectlevel: protectionLevel,
+      expiry: protectionExpiry,
+      reason: 'Restoring pending changes protection after history merge'
+    })
+    spiHelperActiveOperations.set(activeOpKey, 'success')
+  } catch (error) {
+    spiHelperActiveOperations.set(activeOpKey, 'failed')
+  }
+}
+
+async function spiHelperGetSiteRestrictionInformation () {
+  // For enwiki only as this is it's only use case
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      meta: 'siteinfo',
+      siprop: 'restrictions'
+    })
+    return response.query.restrictions
   } catch (error) {
     return []
   }
