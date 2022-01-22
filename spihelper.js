@@ -17,7 +17,7 @@ importScript('User:Timotheus Canens/displaymessage.js')
  * @property {string} label Text to display in the drop-down
  * @property {string} value Value to return if this option is selected
  * @property {boolean} selected Whether this item should be selected by default
- * @property {boolean=} disabled Whether this item should be disabled
+ * @property {boolean} disabled Whether this item should be disabled
  */
 
 /**
@@ -120,11 +120,11 @@ let spiHelperCaseName
 /** list of section IDs + names corresponding to separate investigations */
 let spiHelperCaseSections = []
 
-/** @type {?number} Selected section, "null" means that we're opearting on the entire page */
-let spiHelperSectionId = null
+/** @type {?number} Selected section, "null" as the first element means that we're opearting on the entire page or in selected sections mode */
+let spiHelperSectionIds = [null]
 
 /** @type {?string} Selected section's name (e.g. "10 June 2020") */
-let spiHelperSectionName = null
+let spiHelperSectionName = [null]
 
 /** @type {ParsedArchiveNotice} */
 let spiHelperArchiveNoticeParams
@@ -255,6 +255,10 @@ const spiHelperTopViewHTML = `
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
+  <div class="spiHelper_forSomeCases">
+    <p>Select the cases you want to work on.</p>
+    <ul id="spiHelper_mutlipleSectionSelect"></ul>
+  </div>
   <ul>
     <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
@@ -311,7 +315,7 @@ async function spiHelperInit () {
   // Narrow search scope
   const $topView = $('#spiHelper_topViewDiv', document)
 
-  if (spiHelperArchiveNoticeParams.username === null) {
+  if (spiHelperArchiveNoticeParams.username === null && !spiHelperIsThisPageAnArchive) {
     // No archive notice was found. Add it before we can continue.
     const $warningText = $('#spiHelper_warning', $topView)
     $warningText.show()
@@ -342,6 +346,7 @@ async function spiHelperInit () {
 
   // Generate the section selector
   const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
+  const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
   $sectionSelect.on('change', () => {
     spiHelperSetCheckboxesBySection()
   })
@@ -350,6 +355,9 @@ async function spiHelperInit () {
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
+    $('<li>').attr("id", "spiHelper_li_" + s.index.toString()).appendTo($multipleSectionSelect)
+    $('<input>').val(s.index)..attr("id", "spiHelper_input_" + s.index.toString()).appendTo($('#spiHelper_multipleSectionSelect li#' + "spiHelper_li_" + s.index.toString(), $topView))
+    $('<label>').text(s.line).attr('for', "spiHelper_input_" + s.index.toString()).appendTo($('#spiHelper_multipleSectionSelect li#' + "spiHelper_li_" + s.index.toString(), $topView))
   }
   // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
   $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
@@ -468,7 +476,7 @@ const spiHelperActionViewHTML = `
     <h4>Marking case<span class="spiHelper_forSomeCases">s</span> as closed</h4>
     <input type="checkbox" checked="checked" id="spiHelper_CloseCase" />
     <label for="spiHelper_CloseCase">Close this SPI case</label>
-  </div>
+   </div>
   <div id="spiHelper_moveView">
     <h4 id="spiHelper_moveHeader">Move section<span class="spiHelper_forSomeCases">s</span></h4>
     <label for="spiHelper_moveTarget">New sockmaster username: </label>
@@ -2653,9 +2661,14 @@ async function spiHelperSetCheckboxesBySection () {
 
   const $topView = $('#spiHelper_topViewDiv', document)
   // Get the value of the selection box
-  if ($('#spiHelper_sectionSelect', $topView).val() === 'all' || $('#spiHelper_sectionSelect', $topView).val() === 'some') {
+  if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
     spiHelperSectionId = null
     spiHelperSectionName = null
+  } else if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
+    spiHelperSectionId = []
+    $('#spiHelper_mutlipleSectionSelect', $topView).children().each((dict) => {
+      spiHelperSectionId.append(
+    })
   } else {
     spiHelperSectionId = parseInt($('#spiHelper_sectionSelect', $topView).val().toString())
     const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
