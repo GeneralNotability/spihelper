@@ -357,9 +357,9 @@ async function spiHelperInit () {
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
-    let $li = $('<li>').attr("id", "spiHelper_li_" + s.index.toString()).appendTo($multipleSectionSelect)
-    $('<input type="checkbox">').val(s.index).attr("id", "spiHelper_input_" + s.index.toString()).appendTo($li)
-    $('<label>').text(s.line).attr('for', "spiHelper_input_" + s.index.toString()).appendTo($li)
+    const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
+    $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
+    $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
   }
   // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
   $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
@@ -2962,7 +2962,7 @@ async function spiHelperSetCheckboxesBySection () {
     $('#spiHelper_moveLabel', $topView).html('Move case section<span class="spiHelper_forSomeCases">s</span> (<span title="You probably want to move the full case, ' +
       'select All Sections instead of a specific date in the drop-down"' +
       'class="rt-commentedText spihelper-hovertext"><b>READ ME FIRST</b></span>)')
-    
+
     // Update the options so that they are not plural
     $('.spiHelper_forSomeCases', $topView).hide()
     $('.spiHelper_notForSomeCases', $topView).show()
