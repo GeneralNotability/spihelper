@@ -142,6 +142,13 @@ const spiHelperActionsSelected = {
   SpiMgmt: false
 }
 
+/** Map of case modes. Only one should be true at once. Single means one section, all means all cases and some means selected cases. */
+const spiHelperCaseModeSelected = {
+  some: false,
+  all: false,
+  single: false
+}
+
 /** @type {BlockEntry[]} Requested blocks */
 const spiHelperBlocks = []
 
@@ -257,10 +264,6 @@ const spiHelperTopViewHTML = `
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
-  <div class="spiHelper_forSomeCases">
-    <p>Select the cases you want to work on.</p>
-    <ul id="spiHelper_multipleSectionSelect"></ul>
-  </div>
   <ul>
     <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
@@ -284,7 +287,7 @@ const spiHelperTopViewHTML = `
     </li>
     <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
-      <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case<span class="spiHelper_forSomeCases">s</span> (Clerk only)</label>
+      <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case (Clerk only)</label>
     </li>
     <li id="spiHelper_archiveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
@@ -348,7 +351,6 @@ async function spiHelperInit () {
 
   // Generate the section selector
   const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
-  const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
   $sectionSelect.on('change', () => {
     spiHelperSetCheckboxesBySection()
   })
@@ -357,9 +359,6 @@ async function spiHelperInit () {
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
-    const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
-    $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
-    $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
   }
   // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
   $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
@@ -380,9 +379,14 @@ const spiHelperActionViewHTML = `
 <div id="spiHelper_actionViewDiv">
   <small><a id="spiHelper_backLink">Back to top menu</a></small>
   <br />
-  <h3>Handling SPI case</h3>
+  <h3>Handling SPI <span class="spiHelper_allCasesOnly">page</span><span class="spiHelper_singleCaseOnly spiHelper_forSomeCases">case<span class="spiHelper_forSomeCases">s</span></span></h3>
+  <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
+  <div class="spiHelper_forSomeCases">
+    <p>Select the cases you want to work on.</p>
+    <ul id="spiHelper_multipleSectionSelect"></ul>
+  </div>
   <div id="spiHelper_actionView">
-    <h4>Changing case status</h4>
+    <h4>Changing case status<span class="spiHelper_forSomeCases">es</span></h4>
     <label for="spiHelper_CaseAction">New status:</label>
     <select id="spiHelper_CaseAction"></select>
   </div>
@@ -477,7 +481,7 @@ const spiHelperActionViewHTML = `
   <div id="spiHelper_closeView">
     <h4>Marking case<span class="spiHelper_forSomeCases">s</span> as closed</h4>
     <input type="checkbox" checked="checked" id="spiHelper_CloseCase" />
-    <label for="spiHelper_CloseCase">Close this SPI case</label>
+    <label for="spiHelper_CloseCase">Close th<span class="spiHelper_notForSomeCases">is</span><span class="spiHelper_forSomeCases">se</span> SPI case<span class="spiHelper_forSomeCases">s</span></label>
    </div>
   <div id="spiHelper_moveView">
     <h4 id="spiHelper_moveHeader">Move section<span class="spiHelper_forSomeCases">s</span></h4>
@@ -491,10 +495,16 @@ const spiHelperActionViewHTML = `
   </div>
   <div id="spiHelper_commentView">
     <h4>Comments</h4>
-    <li class="spiHelper_forSomeCases">
-      <input type="checkbox" name="spiHelper_duplicateComment" id="spiHelper_duplicateComment" />
-      <label for="spiHelper_duplicateComment">Add the comment to every selected section.</label>
-    </li>
+    <ul class="spiHelper_forSomeCases">
+      <li>
+        <input type="checkbox" name="spiHelper_duplicateComment" id="spiHelper_duplicateComment" />
+        <label for="spiHelper_duplicateComment">Add the comment to every selected section.</label>
+      </li>
+      <li>
+        <input type="checkbox" name="spiHelper_referenceComment" id="spiHelper_referenceComment" />
+        <label for="spiHelper_referenceComment">Add a reference to the section with the comment in every other section.</label>
+      </li>
+    </ul>
     <span>
       <select id="spiHelper_noteSelect"></select>
       <select class="spiHelper_adminClerkClass" id="spiHelper_adminSelect"></select>
@@ -530,7 +540,10 @@ async function spiHelperGenerateForm () {
   spiHelperActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked')
   spiHelperActionsSelected.Archive = $('#spiHelper_Archive', $topView).prop('checked')
   spiHelperActionsSelected.SpiMgmt = $('#spiHelper_SpiMgmt', $topView).prop('checked')
-  const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
+  spiHelperCaseModeSelected['some'] = $('#spiHelper_sectionSelect', $topView).val() === 'some'
+  spiHelperCaseModeSelected['all'] = $('#spiHelper_sectionSelect', $topView).val() === 'all'
+  spiHelperCaseModeSelected['single'] = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
+  const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
   if (!(spiHelperActionsSelected.Case_act ||
     spiHelperActionsSelected.Note || spiHelperActionsSelected.Close ||
     spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block ||
@@ -548,6 +561,52 @@ async function spiHelperGenerateForm () {
   $('#spiHelper_backLink', $actionView).one('click', () => {
     spiHelperInit()
   })
+
+  const $warningText = $('#spiHelper_warning', $actionView)
+  $warningText.hide()
+
+  if (spiHelperCaseModeSelected.some) {
+   $('.spiHelper_forSomeCases', $actionView).show()
+   $('.spiHelper_notForSomeCases', $actionView).hide()
+   const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $actionView)
+   const caseStatuses = {}
+
+   // Add the dates to the selector
+   for (let i = 0; i < spiHelperCaseSections.length; i++) {
+     const s = spiHelperCaseSections[i]
+     const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
+     if (!spiHelperSectionRegex.test(sectionText)) {
+       // Nothing to do here.
+       continue
+     }
+     const result = spiHelperCaseStatusRegex.exec(sectionText)
+     let casestatus = ''
+     if (result) {
+       casestatus = result[1]
+     } else if (!spiHelperIsThisPageAnArchive) {
+       $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+       $warningText.show()
+     }
+
+     caseStatuses[s.index] = casestatus
+
+     const isClosed = spiHelperCaseClosedRegex.test(casestatus)
+
+     if (!isClosed && spiHelperActionsSelected.Archive) {
+       // If the selected options include archiving, then don't show this section in the list as it can't be archived.
+       continue
+     } else if (isClosed && spiHelperActionsSelected.Close) {
+       // If the selected options include closing, then don't show this section in the list as it can't be closed.
+       continue
+     }
+     const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
+     $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
+     $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
+   }
+  } else {
+    $('.spiHelper_forSomeCases', $actionView).hide()
+    $('.spiHelper_notForSomeCases', $actionView).show()
+  }
   if (spiHelperActionsSelected.Case_act) {
     const result = spiHelperCaseStatusRegex.exec(pagetext)
     let casestatus = ''
@@ -557,7 +616,7 @@ async function spiHelperGenerateForm () {
     const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
     const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus)
     const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus)
-    const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudeclin(ed)?)$/i.test(casestatus)
+    const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudecline(d)?)$/i.test(casestatus)
 
     /** @type {SelectOption[]} Generated array of values for the case status select box */
     const selectOpts = [
@@ -2863,8 +2922,8 @@ async function spiHelperSetCheckboxesBySection () {
     spiHelperSectionId = [null]
     spiHelperSectionName = [null]
   } else if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
-    spiHelperSectionId = []
-    spiHelperSectionName = []
+    spiHelperSectionId = [null]
+    spiHelperSectionName = [null]
   } else {
     spiHelperSectionId = [parseInt($('#spiHelper_sectionSelect', $topView).val().toString())]
     const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
@@ -2911,7 +2970,43 @@ async function spiHelperSetCheckboxesBySection () {
     // Update the options so that they are plural
     $('.spiHelper_forSomeCases', $topView).show()
     $('.spiHelper_notForSomeCases', $topView).hide()
-  } else if (spiHelperSectionId === null) {
+    // Now work out if to enable/disable Close cases and Archive cases. If all cases are closed, then closed cases cannot be used. If all cases are not closed, then archive cases
+    // cannot be used
+    $archiveBox.prop('disabled', true)
+    $closeBox.prop('disabled', true)
+    for (let i = 0; i < spiHelperCaseSections.length; i++) {
+     const s = spiHelperCaseSections[i]
+     const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
+     if (!spiHelperSectionRegex.test(sectionText)) {
+       // Nothing to do here.
+       continue
+     }
+     const result = spiHelperCaseStatusRegex.exec(sectionText)
+     let casestatus = ''
+     if (result) {
+       casestatus = result[1]
+     } else if (!spiHelperIsThisPageAnArchive) {
+       $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+       $warningText.show()
+       continue
+     }
+
+     const isClosed = spiHelperCaseClosedRegex.test(casestatus)
+
+     if (!$archiveBox.prop('disabled') && !$closeBox.prop('disabled')) {
+       // If both are now enabled, we don't need to do further checks.
+       break
+     } else if (isClosed && $archiveBox.prop('disabled')) {
+       // If the selected options include archiving, then don't show this section in the list as it can't be archived.
+       $archiveBox.prop('disabled', false)
+       $archiveBox.prop('checked', true)
+     } else if (!isClosed && $closeBox.prop('disabled')) {
+       // If the selected options include closing, then don't show this section in the list as it can't be closed.
+       $closeBox.prop('disabled', false)
+       continue
+     }
+   }
+  } else if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
     // Show inputs only visible in all-case mode
@@ -3092,11 +3187,13 @@ function spiHelperInsertNote (source) {
 }
 
 /**
- * Changes the case status in the comment box
+ * Changes the case status in the comment box and
+ * if 'some' mode is enabled disables checkboxes for sections which cannot have their
+ * status changed to this value.
  *
  * @param {JQuery<HTMLElement>} source Select box that was changed
  */
-function spiHelperCaseActionUpdated (source) {
+function spiHelperCaseActionUpdated (source) { //TODO: Add 'some' mode support
   const $textBox = $('#spiHelper_CommentText', document)
   const oldText = $textBox.val().toString()
   let newTemplate = ''
