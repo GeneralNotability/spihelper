@@ -2662,15 +2662,15 @@ async function spiHelperSetCheckboxesBySection () {
   const $topView = $('#spiHelper_topViewDiv', document)
   // Get the value of the selection box
   if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
-    spiHelperSectionId = null
-    spiHelperSectionName = null
+    spiHelperSectionId = [null]
+    spiHelperSectionName = [null]
   } else if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
     spiHelperSectionId = []
     spiHelperSectionName = []
   } else {
-    spiHelperSectionId = parseInt($('#spiHelper_sectionSelect', $topView).val().toString())
+    spiHelperSectionId = [parseInt($('#spiHelper_sectionSelect', $topView).val().toString())]
     const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
-    spiHelperSectionName = spiHelperCaseSections[$sectionSelect.prop('selectedIndex')].line
+    spiHelperSectionName = [spiHelperCaseSections[$sectionSelect.prop('selectedIndex')].line]
   }
 
   const $warningText = $('#spiHelper_warning', $topView)
