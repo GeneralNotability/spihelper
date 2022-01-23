@@ -17,3 +17,7 @@
 .spihelper-widthlimit {
     width: 10vw;
 }
+
+.spiHelper_forSomeCases {
+    display:none;
+}
