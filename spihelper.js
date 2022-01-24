@@ -537,10 +537,10 @@ const spiHelperActionViewHTML = `
 // eslint-disable-next-line no-unused-vars
 async function spiHelperGenerateForm () {
   'use strict'
-  const $warningText = $('#spiHelper_warning', $actionView)
-  $warningText.hide()
   spiHelperUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
+  const $warningText = $('#spiHelper_warning', $topView)
+  $warningText.hide()
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
   spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
@@ -3087,8 +3087,8 @@ async function spiHelperUpdateCaseActions () {
   const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
   const $warningText = $('#spiHelper_warning', $topView)
   $warningText.show()
-  const activeCaseStatuses = $('input', $multipleSectionSelect).filter(() => { return $(this).prop('checked') })
-  console.log(activeCaseStatuses)
+  const $activeCaseStatuses = $('input', $multipleSectionSelect).filter(() => { return $(this).prop('checked') })
+  console.log($activeCaseStatuses)
   const $archiveBox = $('#spiHelper_Archive', $topView)
   const $closeBox = $('#spiHelper_Close', $topView)
   $archiveBox.prop('disabled', true)
