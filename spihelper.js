@@ -264,6 +264,10 @@ const spiHelperTopViewHTML = `
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
+  <div class="spiHelper_forSomeCases">
+    <p>Select the cases you want to work on.</p>
+    <ul id="spiHelper_multipleSectionSelect"></ul>
+  </div>
   <ul>
     <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
@@ -355,10 +359,14 @@ async function spiHelperInit () {
     spiHelperSetCheckboxesBySection()
   })
 
-  // Add the dates to the selector
+ const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView) 
+ // Add the dates to the selector
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
+    const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
+    $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
+    $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
   }
   // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
   $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
@@ -381,10 +389,6 @@ const spiHelperActionViewHTML = `
   <br />
   <h3>Handling SPI <span class="spiHelper_allCasesOnly">page</span><span class="spiHelper_singleCaseOnly spiHelper_forSomeCases">case<span class="spiHelper_forSomeCases">s</span></span></h3>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
-  <div class="spiHelper_forSomeCases">
-    <p>Select the cases you want to work on.</p>
-    <ul id="spiHelper_multipleSectionSelect"></ul>
-  </div>
   <div id="spiHelper_actionView">
     <h4>Changing case status<span class="spiHelper_forSomeCases">es</span></h4>
     <label for="spiHelper_CaseAction">New status:</label>
@@ -543,6 +547,7 @@ async function spiHelperGenerateForm () {
   spiHelperCaseModeSelected['some'] = $('#spiHelper_sectionSelect', $topView).val() === 'some'
   spiHelperCaseModeSelected['all'] = $('#spiHelper_sectionSelect', $topView).val() === 'all'
   spiHelperCaseModeSelected['single'] = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
+  spiHelperSectionId = $('')
   const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
   if (!(spiHelperActionsSelected.Case_act ||
     spiHelperActionsSelected.Note || spiHelperActionsSelected.Close ||
@@ -568,122 +573,87 @@ async function spiHelperGenerateForm () {
   if (spiHelperCaseModeSelected.some) {
    $('.spiHelper_forSomeCases', $actionView).show()
    $('.spiHelper_notForSomeCases', $actionView).hide()
-   const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $actionView)
-   const caseStatuses = {}
-
-   // Add the dates to the selector
-   for (let i = 0; i < spiHelperCaseSections.length; i++) {
-     const s = spiHelperCaseSections[i]
-     const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
-     if (!spiHelperSectionRegex.test(sectionText)) {
-       // Nothing to do here.
-       continue
-     }
-     const result = spiHelperCaseStatusRegex.exec(sectionText)
-     let casestatus = ''
-     if (result) {
-       casestatus = result[1]
-     } else if (!spiHelperIsThisPageAnArchive) {
-       $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
-       $warningText.show()
-     }
-
-     caseStatuses[s.index] = casestatus
-
-     const isClosed = spiHelperCaseClosedRegex.test(casestatus)
-
-     if (!isClosed && spiHelperActionsSelected.Archive) {
-       // If the selected options include archiving, then don't show this section in the list as it can't be archived.
-       continue
-     } else if (isClosed && spiHelperActionsSelected.Close) {
-       // If the selected options include closing, then don't show this section in the list as it can't be closed.
-       continue
-     }
-     const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
-     $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
-     $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
-   }
   } else {
     $('.spiHelper_forSomeCases', $actionView).hide()
     $('.spiHelper_notForSomeCases', $actionView).show()
   }
   if (spiHelperActionsSelected.Case_act) {
     const result = spiHelperCaseStatusRegex.exec(pagetext)
-    let casestatus = ''
-    if (result) {
-      casestatus = result[1]
-    }
-    const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
-    const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus)
-    const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus)
-    const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudecline(d)?)$/i.test(casestatus)
-
+    const keys = Object.keys(caseStatuses)
     /** @type {SelectOption[]} Generated array of values for the case status select box */
     const selectOpts = [
       { label: 'No action', value: 'noaction', selected: true }
     ]
-    if (spiHelperCaseClosedRegex.test(casestatus)) {
-      selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false })
-    } else if (spiHelperIsClerk() && casestatus === 'clerk') {
-      // Allow clerks to change the status from clerk to open.
-      // Used when clerk assistance has been given and the case previously had the status 'open'.
-      selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
-    } else if (spiHelperIsAdmin() && casestatus === 'admin') {
-      // Allow admins to change the status to open from admin
-      // Used when admin assistance has been given to the non-admin clerk and the case previously had the status 'open'.
-      selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
-    }
-    if (spiHelperIsCheckuser()) {
-      selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false })
-    }
-    if (spiHelperIsClerk() || spiHelperIsAdmin()) {
-      selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false })
-    }
-    if (canAddCURequest) {
-      // Statuses only available if the case could be moved to "CU requested"
-      selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false })
-      if (spiHelperIsClerk()) {
-        selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false })
-      }
-    }
-    // CU already requested
-    if (cuRequested && spiHelperIsClerk()) {
-      // Statuses only available if CU has been requested, only clerks + CUs should use these
-      selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false })
-      // Switch the decline option depending on whether the user is a checkuser
-      if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false })
+    for (let i = 0; i < keys.length; i++) {
+      let casestatus = caseStatuses[keys[i]]
+      const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
+      const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus)
+      const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus)
+      const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudecline(d)?)$/i.test(casestatus)
+
+      if (spiHelperCaseClosedRegex.test(casestatus)) {
+        selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false })
+      } else if (spiHelperIsClerk() && casestatus === 'clerk') {
+        // Allow clerks to change the status from clerk to open.
+        // Used when clerk assistance has been given and the case previously had the status 'open'.
+        selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
+      } else if (spiHelperIsAdmin() && casestatus === 'admin') {
+        // Allow admins to change the status to open from admin
+        // Used when admin assistance has been given to the non-admin clerk and the case previously had the status 'open'.
+        selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
       }
       if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
-      } else {
-        selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false })
+        selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false })
       }
-      selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
-    } else if (cuEndorsed && spiHelperIsCheckuser()) {
-      // Let checkusers decline endorsed cases
+      if (spiHelperIsClerk() || spiHelperIsAdmin()) {
+        selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false })
+      }
+      if (canAddCURequest) {
+        // Statuses only available if the case could be moved to "CU requested"
+        selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false })
+        if (spiHelperIsClerk()) {
+          selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false })
+        }
+      }
+      // CU already requested
+      if (cuRequested && spiHelperIsClerk()) {
+        // Statuses only available if CU has been requested, only clerks + CUs should use these
+        selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false })
+        // Switch the decline option depending on whether the user is a checkuser
+        if (spiHelperIsCheckuser()) {
+          selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false })
+        }
+        if (spiHelperIsCheckuser()) {
+          selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
+        } else {
+          selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false })
+        }
+        selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
+      } else if (cuEndorsed && spiHelperIsCheckuser()) {
+        // Let checkusers decline endorsed cases
+        if (spiHelperIsCheckuser()) {
+          selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
+        }
+        selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
+      }
+      // This is mostly a CU function, but let's let clerks and admins set it
+      //  in case the CU forgot (or in case we're un-closing))
+      if (spiHelperIsAdmin() || spiHelperIsClerk()) {
+        selectOpts.push({ label: 'Mark as checked', value: 'checked', selected: false })
+      }
+      if (spiHelperIsClerk() && cuCompleted) {
+        selectOpts.push({ label: 'Relist for another check', value: 'relist', selected: false })
+      }
       if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
+        selectOpts.push({ label: 'Place case on CU hold', value: 'cuhold', selected: false })
+      } else { // I guess it's okay for anyone to have this option
+        selectOpts.push({ label: 'Place case on hold', value: 'hold', selected: false })
       }
-      selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
-    }
-    // This is mostly a CU function, but let's let clerks and admins set it
-    //  in case the CU forgot (or in case we're un-closing))
-    if (spiHelperIsAdmin() || spiHelperIsClerk()) {
-      selectOpts.push({ label: 'Mark as checked', value: 'checked', selected: false })
-    }
-    if (spiHelperIsClerk() && cuCompleted) {
-      selectOpts.push({ label: 'Relist for another check', value: 'relist', selected: false })
-    }
-    if (spiHelperIsCheckuser()) {
-      selectOpts.push({ label: 'Place case on CU hold', value: 'cuhold', selected: false })
-    } else { // I guess it's okay for anyone to have this option
-      selectOpts.push({ label: 'Place case on hold', value: 'hold', selected: false })
-    }
-    selectOpts.push({ label: 'Request clerk action', value: 'clerk', selected: false })
-    // I think this is only useful for non-admin clerks to ask admins to do stuff
-    if (!spiHelperIsAdmin() && spiHelperIsClerk()) {
-      selectOpts.push({ label: 'Request admin action', value: 'admin', selected: false })
+      selectOpts.push({ label: 'Request clerk action', value: 'clerk', selected: false })
+      // I think this is only useful for non-admin clerks to ask admins to do stuff
+      if (!spiHelperIsAdmin() && spiHelperIsClerk()) {
+        selectOpts.push({ label: 'Request admin action', value: 'admin', selected: false })
+      }
     }
     // Generate the case action options
     spiHelperGenerateSelect('spiHelper_CaseAction', selectOpts)
@@ -2972,40 +2942,7 @@ async function spiHelperSetCheckboxesBySection () {
     $('.spiHelper_notForSomeCases', $topView).hide()
     // Now work out if to enable/disable Close cases and Archive cases. If all cases are closed, then closed cases cannot be used. If all cases are not closed, then archive cases
     // cannot be used
-    $archiveBox.prop('disabled', true)
-    $closeBox.prop('disabled', true)
-    for (let i = 0; i < spiHelperCaseSections.length; i++) {
-     const s = spiHelperCaseSections[i]
-     const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
-     if (!spiHelperSectionRegex.test(sectionText)) {
-       // Nothing to do here.
-       continue
-     }
-     const result = spiHelperCaseStatusRegex.exec(sectionText)
-     let casestatus = ''
-     if (result) {
-       casestatus = result[1]
-     } else if (!spiHelperIsThisPageAnArchive) {
-       $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
-       $warningText.show()
-       continue
-     }
-
-     const isClosed = spiHelperCaseClosedRegex.test(casestatus)
-
-     if (!$archiveBox.prop('disabled') && !$closeBox.prop('disabled')) {
-       // If both are now enabled, we don't need to do further checks.
-       break
-     } else if (isClosed && $archiveBox.prop('disabled')) {
-       // If the selected options include archiving, then don't show this section in the list as it can't be archived.
-       $archiveBox.prop('disabled', false)
-       $archiveBox.prop('checked', true)
-     } else if (!isClosed && $closeBox.prop('disabled')) {
-       // If the selected options include closing, then don't show this section in the list as it can't be closed.
-       $closeBox.prop('disabled', false)
-       continue
-     }
-   }
+    await spiHelperUpdateCaseActions()
   } else if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
@@ -3066,6 +3003,49 @@ async function spiHelperSetCheckboxesBySection () {
   if (spiHelperIsThisPageAnArchive) {
     $('.spiHelper_notOnArchive', $topView).hide()
   }
+}
+
+async function spiHelperUpdateCaseActions () {
+  const $topView = $('#spiHelper_topViewDiv', document)
+  const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
+  const activeCaseStatuses = $('input', $multipleSectionSelect).filter(() => {return $(this).prop('checked')})
+  console.log(activeCaseStatuses)
+  const $archiveBox = $('#spiHelper_Archive', $topView)
+  const $closeBox = $('#spiHelper_Close', $topView)
+  $archiveBox.prop('disabled', true)
+  $closeBox.prop('disabled', true)
+  for (let i = 0; i < spiHelperCaseSections.length; i++) {
+   const s = spiHelperCaseSections[i]
+   const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
+   if (!spiHelperSectionRegex.test(sectionText)) {
+     // Nothing to do here.
+     continue
+   }
+   const result = spiHelperCaseStatusRegex.exec(sectionText)
+   let casestatus = ''
+   if (result) {
+     casestatus = result[1]
+   } else if (!spiHelperIsThisPageAnArchive) {
+     $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+     $warningText.show()
+     continue
+   }
+
+   const isClosed = spiHelperCaseClosedRegex.test(casestatus)
+
+   if (!$archiveBox.prop('disabled') && !$closeBox.prop('disabled')) {
+     // If both are now enabled, we don't need to do further checks.
+     break
+   } else if (isClosed && $archiveBox.prop('disabled')) {
+     // If the selected options include archiving, then don't show this section in the list as it can't be archived.
+     $archiveBox.prop('disabled', false)
+     $archiveBox.prop('checked', true)
+   } else if (!isClosed && $closeBox.prop('disabled')) {
+     // If the selected options include closing, then don't show this section in the list as it can't be closed.
+     $closeBox.prop('disabled', false)
+     continue
+   }
+ }
 }
 
 /**
