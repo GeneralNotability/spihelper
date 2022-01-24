@@ -747,6 +747,14 @@ async function spiHelperGenerateForm () {
   }
 
   if (spiHelperActionsSelected.Block) {
+    let pagetext = ''
+    if (spiHelperCaseModeSelected.some) {
+      for (let i=0; i < spiHelperSectionId.length; i++) {
+        pagetext = pagetext + await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[i])
+      }
+    } else {
+      pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
+    }
     if (spiHelperIsAdmin()) {
       $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
     } else {
@@ -840,8 +848,10 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_blockTagView', $actionView).hide()
   }
   if (spiHelperActionsSelected.Rename) {
-    if (spiHelperSectionId) {
+    if (spiHelperCaseModeSelected.single) {
       $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
+    } else if (spiHelperCaseModeSelected.some) {
+      $('#spiHelper_moveHeader', $actionView).text('Move sections')
     } else {
       $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
     }
@@ -850,7 +860,7 @@ async function spiHelperGenerateForm () {
   }
 
   // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
-  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
+  if (!spiHelperCaseModeSelected.all && !spiHelperIsThisPageAnArchive) {
     // generate the note prefixes
     /** @type {SelectOption[]} */
     const spiHelperNoteTemplates = [
@@ -879,6 +889,12 @@ async function spiHelperGenerateForm () {
     spiHelperGenerateSelect('spiHelper_cuSelect', spiHelperCUTemplates)
     $('#spiHelper_cuSelect', $actionView).on('change', function (e) {
       spiHelperInsertTextFromSelect($(e.target))
+    })
+    $('#spiHelper_duplicateComment', $actionView).on('change', function (e) {
+      $('#spiHelper_referenceComment', $actionView).prop('disabled', $(e.target).prop('checked'))
+    })
+    $('#spiHelper_referenceComment', $actionView).on('change', function (e) {
+      $('#spiHelper_duplicateComment', $actionView).prop('disabled', $(e.target).prop('checked'))
     })
     $('#spiHelper_previewLink', $actionView).on('click', function () {
       spiHelperPreviewText()
