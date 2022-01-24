@@ -368,8 +368,10 @@ async function spiHelperInit () {
     $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
     $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
   }
-  // Selected-sections selector. Used to change the case status, close or archive selected sections all at once.
-  $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
+  // Selected-sections selector. Used to change the case status, close or archive selected sections all at once. Don't show if there are no cases
+  if (spiHelperCaseSections.length > 0) {
+    $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
+  }
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
@@ -544,11 +546,40 @@ async function spiHelperGenerateForm () {
   spiHelperActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked')
   spiHelperActionsSelected.Archive = $('#spiHelper_Archive', $topView).prop('checked')
   spiHelperActionsSelected.SpiMgmt = $('#spiHelper_SpiMgmt', $topView).prop('checked')
-  spiHelperCaseModeSelected['some'] = $('#spiHelper_sectionSelect', $topView).val() === 'some'
-  spiHelperCaseModeSelected['all'] = $('#spiHelper_sectionSelect', $topView).val() === 'all'
-  spiHelperCaseModeSelected['single'] = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
-  spiHelperSectionId = $('')
-  const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
+  spiHelperCaseModeSelected.some = $('#spiHelper_sectionSelect', $topView).val() === 'some'
+  spiHelperCaseModeSelected.all = $('#spiHelper_sectionSelect', $topView).val() === 'all'
+  spiHelperCaseModeSelected.single = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
+  let spiHelperSelectedCaseStatuses = new Set()
+  if (spiHelperCaseModeSelected.some) {
+    spiHelperSectionId = $('#spiHelper_multipleSectionSelect', $topView).find("input").filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
+    console.log(spiHelperSectionId)
+    for (let i = 0; i < spiHelperCaseSections.length; i++) {
+      if (spiHelperSectionId.indexOf(spiHelperCaseSections[i].index) > 0) {
+        spiHelperSectionName[spiHelperCaseSections[i].index] = spiHelperCaseSections[i].line
+        const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperCaseSections[i].index)
+        const result = spiHelperCaseStatusRegex.exec(sectionText)
+        let casestatus = ''
+        if (result) {
+          casestatus = result[1]
+        } else if (!spiHelperIsThisPageAnArchive) {
+          $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+          $warningText.show()
+        }
+        spiHelperSelectedCaseStatuses.add(casestatus)
+      }
+    }
+  } else if (spiHelperCaseModeSelected.single) {
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
+    const result = spiHelperCaseStatusRegex.exec(sectionText)
+    let casestatus = ''
+    if (result) {
+      casestatus = result[1]
+    } else if (!spiHelperIsThisPageAnArchive) {
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+      $warningText.show()
+    }
+    spiHelperSelectedCaseStatuses.add(casestatus)
+  }
   if (!(spiHelperActionsSelected.Case_act ||
     spiHelperActionsSelected.Note || spiHelperActionsSelected.Close ||
     spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block ||
@@ -578,82 +609,113 @@ async function spiHelperGenerateForm () {
     $('.spiHelper_notForSomeCases', $actionView).show()
   }
   if (spiHelperActionsSelected.Case_act) {
-    const result = spiHelperCaseStatusRegex.exec(pagetext)
-    const keys = Object.keys(caseStatuses)
     /** @type {SelectOption[]} Generated array of values for the case status select box */
     const selectOpts = [
       { label: 'No action', value: 'noaction', selected: true }
     ]
-    for (let i = 0; i < keys.length; i++) {
-      let casestatus = caseStatuses[keys[i]]
+    // Those not in this list were not dependent on the case status to be enabled, so did not have to be checked against every section.
+    const possibleCaseActions = {
+      reopen: true,
+      open: true,
+      CUrequest: true,
+      selfendorse: true,
+      cuendorse: true,
+      cudecline: true,
+      decline: true,
+      cumoreinfo: true,
+      relist: true,
+    }
+    spiHelperSelectedCaseStatuses.forEach((casestatus) => {
       const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
       const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus)
       const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus)
       const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudecline(d)?)$/i.test(casestatus)
 
-      if (spiHelperCaseClosedRegex.test(casestatus)) {
-        selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false })
-      } else if (spiHelperIsClerk() && casestatus === 'clerk') {
-        // Allow clerks to change the status from clerk to open.
-        // Used when clerk assistance has been given and the case previously had the status 'open'.
-        selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
-      } else if (spiHelperIsAdmin() && casestatus === 'admin') {
-        // Allow admins to change the status to open from admin
-        // Used when admin assistance has been given to the non-admin clerk and the case previously had the status 'open'.
-        selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
+      // For the next few if statements, if the match fails it means that the option cannot be applied to this particular section
+      // For the Selected Sections mode all the cases selected must be able to be set to this particular status by this user
+      // for the option to be displayed.
+      if (!spiHelperCaseClosedRegex.test(casestatus)) {
+        possibleCaseActions.reopen = false
       }
-      if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false })
+      if (!(spiHelperIsClerk() && casestatus === 'clerk') && !(spiHelperIsAdmin() && casestatus === 'admin')) {
+        // Allow clerks to change the status from clerk to open. Allow admins to set case status to open.
+        possibleCaseActions.open = false
       }
-      if (spiHelperIsClerk() || spiHelperIsAdmin()) {
-        selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false })
-      }
-      if (canAddCURequest) {
+      if (!canAddCURequest) {
         // Statuses only available if the case could be moved to "CU requested"
-        selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false })
-        if (spiHelperIsClerk()) {
-          selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false })
-        }
+        possibleCaseActions.CUrequest = false
+      }
+      if (!spiHelperIsClerk() || !canAddCURequest) {
+        possibleCaseActions.selfendorse = false
       }
       // CU already requested
-      if (cuRequested && spiHelperIsClerk()) {
+      if (!cuRequested || !spiHelperIsClerk()) {
         // Statuses only available if CU has been requested, only clerks + CUs should use these
-        selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false })
-        // Switch the decline option depending on whether the user is a checkuser
-        if (spiHelperIsCheckuser()) {
-          selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false })
-        }
-        if (spiHelperIsCheckuser()) {
-          selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
-        } else {
-          selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false })
-        }
-        selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
-      } else if (cuEndorsed && spiHelperIsCheckuser()) {
-        // Let checkusers decline endorsed cases
-        if (spiHelperIsCheckuser()) {
-          selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
-        }
-        selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
+        possibleCaseActions.endorse = false
+        possibleCaseActions.decline = false
+        possibleCaseActions.cumoreinfo = false
       }
-      // This is mostly a CU function, but let's let clerks and admins set it
-      //  in case the CU forgot (or in case we're un-closing))
-      if (spiHelperIsAdmin() || spiHelperIsClerk()) {
-        selectOpts.push({ label: 'Mark as checked', value: 'checked', selected: false })
+      if (!cuRequested || !spiHelperIsCheckuser()) {
+        possibleCaseActions.cuendorse = false
+        possibleCaseActions.cudecline = false
       }
-      if (spiHelperIsClerk() && cuCompleted) {
-        selectOpts.push({ label: 'Relist for another check', value: 'relist', selected: false })
+      if (!cuEndorsed || !spiHelperIsCheckuser()) {
+        possibleCaseActions.cudecline = false
+        possibleCaseActions.cumoreinfo = false
       }
-      if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Place case on CU hold', value: 'cuhold', selected: false })
-      } else { // I guess it's okay for anyone to have this option
-        selectOpts.push({ label: 'Place case on hold', value: 'hold', selected: false })
+      if (!spiHelperIsClerk() || !cuCompleted) {
+        possibleCaseActions.relist = false
       }
-      selectOpts.push({ label: 'Request clerk action', value: 'clerk', selected: false })
-      // I think this is only useful for non-admin clerks to ask admins to do stuff
-      if (!spiHelperIsAdmin() && spiHelperIsClerk()) {
-        selectOpts.push({ label: 'Request admin action', value: 'admin', selected: false })
-      }
+    })
+    if (possibleCaseActions.reopen) {
+      selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false })
+    } else if (possibleCaseActions.open) {
+      selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
+    }
+    if (spiHelperIsCheckuser()) {
+      selectOpts.push({ label: 'Mark as in progress', value: 'inprogress', selected: false })
+    }
+    if (spiHelperIsClerk() || spiHelperIsAdmin()) {
+      selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false })
+    }
+    if (possibleCaseActions.CUrequest) {
+      selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false })
+    }
+    if (possibleCaseActions.selfendorse) {
+      selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false })
+    }
+    if (possibleCaseActions.endorse) {
+      selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false })
+    }
+    if (possibleCaseActions.cuendorse) {
+      selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false })
+    }
+    if (possibleCaseActions.decline) {
+      selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false })
+    }
+    if (possibleCaseActions.cudecline) {
+      selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
+    }
+    if (possibleCaseActions.cumoreinfo) {
+      selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
+    }
+    // This is mostly a CU function, but let's let clerks and admins set it
+    //  in case the CU forgot (or in case we're un-closing))
+    if (spiHelperIsAdmin() || spiHelperIsClerk()) {
+      selectOpts.push({ label: 'Mark as checked', value: 'checked', selected: false })
+    }
+    if (possibleCaseActions.relist) {
+      selectOpts.push({ label: 'Relist for another check', value: 'relist', selected: false })
+    }
+    if (spiHelperIsCheckuser()) {
+      selectOpts.push({ label: 'Place case on CU hold', value: 'cuhold', selected: false })
+    } else { // I guess it's okay for anyone to have this option
+      selectOpts.push({ label: 'Place case on hold', value: 'hold', selected: false })
+    }
+    selectOpts.push({ label: 'Request clerk action', value: 'clerk', selected: false })
+    // I think this is only useful for non-admin clerks to ask admins to do stuff
+    if (!spiHelperIsAdmin() && spiHelperIsClerk()) {
+      selectOpts.push({ label: 'Request admin action', value: 'admin', selected: false })
     }
     // Generate the case action options
     spiHelperGenerateSelect('spiHelper_CaseAction', selectOpts)
