@@ -359,8 +359,8 @@ async function spiHelperInit () {
     spiHelperSetCheckboxesBySection()
   })
 
- const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView) 
- // Add the dates to the selector
+  const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
+  // Add the dates to the selector
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
@@ -537,6 +537,8 @@ const spiHelperActionViewHTML = `
 // eslint-disable-next-line no-unused-vars
 async function spiHelperGenerateForm () {
   'use strict'
+  const $warningText = $('#spiHelper_warning', $actionView)
+  $warningText.hide()
   spiHelperUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
@@ -549,9 +551,9 @@ async function spiHelperGenerateForm () {
   spiHelperCaseModeSelected.some = $('#spiHelper_sectionSelect', $topView).val() === 'some'
   spiHelperCaseModeSelected.all = $('#spiHelper_sectionSelect', $topView).val() === 'all'
   spiHelperCaseModeSelected.single = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
-  let spiHelperSelectedCaseStatuses = new Set()
+  const spiHelperSelectedCaseStatuses = new Set()
   if (spiHelperCaseModeSelected.some) {
-    spiHelperSectionId = $('#spiHelper_multipleSectionSelect', $topView).find("input").filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
+    spiHelperSectionId = $('#spiHelper_multipleSectionSelect', $topView).find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
     console.log(spiHelperSectionId)
     for (let i = 0; i < spiHelperCaseSections.length; i++) {
       if (spiHelperSectionId.indexOf(spiHelperCaseSections[i].index) > 0) {
@@ -598,12 +600,9 @@ async function spiHelperGenerateForm () {
     spiHelperInit()
   })
 
-  const $warningText = $('#spiHelper_warning', $actionView)
-  $warningText.hide()
-
   if (spiHelperCaseModeSelected.some) {
-   $('.spiHelper_forSomeCases', $actionView).show()
-   $('.spiHelper_notForSomeCases', $actionView).hide()
+    $('.spiHelper_forSomeCases', $actionView).show()
+    $('.spiHelper_notForSomeCases', $actionView).hide()
   } else {
     $('.spiHelper_forSomeCases', $actionView).hide()
     $('.spiHelper_notForSomeCases', $actionView).show()
@@ -623,7 +622,7 @@ async function spiHelperGenerateForm () {
       cudecline: true,
       decline: true,
       cumoreinfo: true,
-      relist: true,
+      relist: true
     }
     spiHelperSelectedCaseStatuses.forEach((casestatus) => {
       const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
@@ -749,7 +748,7 @@ async function spiHelperGenerateForm () {
   if (spiHelperActionsSelected.Block) {
     let pagetext = ''
     if (spiHelperCaseModeSelected.some) {
-      for (let i=0; i < spiHelperSectionId.length; i++) {
+      for (let i = 0; i < spiHelperSectionId.length; i++) {
         pagetext = pagetext + await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[i])
       }
     } else {
@@ -3086,44 +3085,46 @@ async function spiHelperSetCheckboxesBySection () {
 async function spiHelperUpdateCaseActions () {
   const $topView = $('#spiHelper_topViewDiv', document)
   const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
-  const activeCaseStatuses = $('input', $multipleSectionSelect).filter(() => {return $(this).prop('checked')})
+  const $warningText = $('#spiHelper_warning', $topView)
+  $warningText.show()
+  const activeCaseStatuses = $('input', $multipleSectionSelect).filter(() => { return $(this).prop('checked') })
   console.log(activeCaseStatuses)
   const $archiveBox = $('#spiHelper_Archive', $topView)
   const $closeBox = $('#spiHelper_Close', $topView)
   $archiveBox.prop('disabled', true)
   $closeBox.prop('disabled', true)
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
-   const s = spiHelperCaseSections[i]
-   const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
-   if (!spiHelperSectionRegex.test(sectionText)) {
-     // Nothing to do here.
-     continue
-   }
-   const result = spiHelperCaseStatusRegex.exec(sectionText)
-   let casestatus = ''
-   if (result) {
-     casestatus = result[1]
-   } else if (!spiHelperIsThisPageAnArchive) {
-     $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
-     $warningText.show()
-     continue
-   }
+    const s = spiHelperCaseSections[i]
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
+    if (!spiHelperSectionRegex.test(sectionText)) {
+      // Nothing to do here.
+      continue
+    }
+    const result = spiHelperCaseStatusRegex.exec(sectionText)
+    let casestatus = ''
+    if (result) {
+      casestatus = result[1]
+    } else if (!spiHelperIsThisPageAnArchive) {
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+      $warningText.show()
+      continue
+    }
 
-   const isClosed = spiHelperCaseClosedRegex.test(casestatus)
+    const isClosed = spiHelperCaseClosedRegex.test(casestatus)
 
-   if (!$archiveBox.prop('disabled') && !$closeBox.prop('disabled')) {
-     // If both are now enabled, we don't need to do further checks.
-     break
-   } else if (isClosed && $archiveBox.prop('disabled')) {
-     // If the selected options include archiving, then don't show this section in the list as it can't be archived.
-     $archiveBox.prop('disabled', false)
-     $archiveBox.prop('checked', true)
-   } else if (!isClosed && $closeBox.prop('disabled')) {
-     // If the selected options include closing, then don't show this section in the list as it can't be closed.
-     $closeBox.prop('disabled', false)
-     continue
-   }
- }
+    if (!$archiveBox.prop('disabled') && !$closeBox.prop('disabled')) {
+      // If both are now enabled, we don't need to do further checks.
+      break
+    } else if (isClosed && $archiveBox.prop('disabled')) {
+      // If the selected options include archiving, then don't show this section in the list as it can't be archived.
+      $archiveBox.prop('disabled', false)
+      $archiveBox.prop('checked', true)
+    } else if (!isClosed && $closeBox.prop('disabled')) {
+      // If the selected options include closing, then don't show this section in the list as it can't be closed.
+      $closeBox.prop('disabled', false)
+      continue
+    }
+  }
 }
 
 /**
@@ -3251,7 +3252,7 @@ function spiHelperInsertNote (source) {
  *
  * @param {JQuery<HTMLElement>} source Select box that was changed
  */
-function spiHelperCaseActionUpdated (source) { //TODO: Add 'some' mode support
+function spiHelperCaseActionUpdated (source) { // TODO: Add 'some' mode support
   const $textBox = $('#spiHelper_CommentText', document)
   const oldText = $textBox.val().toString()
   let newTemplate = ''
