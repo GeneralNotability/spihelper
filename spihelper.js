@@ -1472,7 +1472,7 @@ async function spiHelperPerformActions () {
     }
     logMessage += '\n** Updated archivenotice'
     const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
-      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
+      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID)
     if (editResult) {
       spiHelperStartingRevID = editResult.edit.newrevid
     }
@@ -1665,7 +1665,7 @@ async function spiHelperPerformActions () {
           await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false)
           await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
         }
-        if(!await spiHelperSaveToArchive(archivetext)) {
+        if (!await spiHelperSaveToArchive(archivetext)) {
           failedAtIndex = index
           return false
         }
