@@ -1644,7 +1644,7 @@ async function spiHelperPerformActions () {
       let failedAtIndex = spiHelperSectionId.length + 1
       spiHelperSectionId.every(await async function (sectionId, index) {
         logMessage += '\n** Archived section'
-        archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId))
+        archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
         const postExpandPercent =
           (await spiHelperGetPostExpandSize(spiHelperPageName, sectionId) +
           await spiHelperGetPostExpandSize(spiHelperGetArchiveName())) /
@@ -3178,6 +3178,7 @@ async function spiHelperUpdateCaseActions () {
   const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
   const $warningText = $('#spiHelper_warning', $topView)
   $warningText.show()
+  $('#spiHelper_multipleSectionSelect', $topView).find('input').prop('disabled', false)
   const selectedSectionIds = $('#spiHelper_multipleSectionSelect', $topView).find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
   console.log(selectedSectionIds)
   const $archiveBox = $('#spiHelper_Archive', $topView)
@@ -3215,17 +3216,17 @@ async function spiHelperUpdateCaseActions () {
 
     const isClosed = spiHelperCaseClosedRegex.test(casestatus)
 
-    if (!$archiveBox.prop('disabled') && !$closeBox.prop('disabled')) {
-      // If both are now enabled, we don't need to do further checks.
-      break
+    if ((!$archiveBox.prop('disabled') && !isClosed) || (!$closeBox.prop('disabled') && isClosed)) {
+      $('#spiHelper_multipleSectionSelect', $topView).find('input').each(function (element) {
+        if ($(element).value() === s.index) {
+          $(element).prop('disabled', true) 
+        }
+      })
     } else if (isClosed && $archiveBox.prop('disabled')) {
-      // If the selected options include archiving, then don't show this section in the list as it can't be archived.
       $archiveBox.prop('disabled', false)
       $archiveBox.prop('checked', true)
     } else if (!isClosed && $closeBox.prop('disabled')) {
-      // If the selected options include closing, then don't show this section in the list as it can't be closed.
       $closeBox.prop('disabled', false)
-      continue
     }
   }
 }
