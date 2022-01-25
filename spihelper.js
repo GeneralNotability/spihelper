@@ -3222,7 +3222,7 @@ async function spiHelperUpdateCaseActions () {
 
     if ((!$archiveBox.prop('disabled') && !isClosed) || (!$closeBox.prop('disabled') && isClosed)) {
       $multipleSectionSelect.find('input').each(function (element) {
-        if ($(element).value() === s.index) {
+        if ($(element).val() === s.index) {
           $(element).prop('disabled', true)
         }
       })
