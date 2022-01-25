@@ -1681,7 +1681,7 @@ async function spiHelperPerformActions () {
       spiHelperSectionId.slice().reverse().forEach(await async function (sectionId) { // Reversed for the same reason as why it was reversed for the archive code
         logMessage += '\n** moved section to ' + renameTarget
         await spiHelperMoveCaseSection(renameTarget, sectionId)
-      }
+      })
     }
   }
   if (spiHelperSettings.log) {
