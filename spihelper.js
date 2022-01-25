@@ -2783,7 +2783,7 @@ async function spiHelperGetInvestigationSectionIDs () {
   // sections (should all be level-3 headers)
   'use strict'
 
-  cosnt sections = await spiHelperGetSectionIDs()
+  const sections = await spiHelperGetSectionIDs()
   const dateSections = []
   for (let i = 0; i < sections.length; i++) {
     // TODO: also check for presence of spi case status
