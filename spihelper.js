@@ -1481,7 +1481,7 @@ async function spiHelperPerformActions () {
       // The section IDs that have already been processed will be still fine.
       spiHelperSectionId.forEach((sectionIdToModify, indexForModifyLoop) => {
         if (index < indexForModifyLoop) {
-          continue
+          return
         }
         spiHelperSectionId[indexForModifyLoop] = sectionIdToModify + (await spiHelperGetSectionIDs().length - sectionCount)
       })
