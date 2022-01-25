@@ -1462,8 +1462,9 @@ async function spiHelperPerformActions () {
   }
 
   if (spiHelperActionsSelected.SpiMgmt) {
+    let sectionText = await spiHelperGetPageText(spiHelperPageName, true)
     const newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams)
-    let sectionText = sectionText.replace(spiHelperArchiveNoticeRegex, newArchiveNotice)
+    sectionText = sectionText.replace(spiHelperArchiveNoticeRegex, newArchiveNotice)
     if (editsummary) {
       editsummary += ', update archivenotice'
     } else {
@@ -1648,7 +1649,7 @@ async function spiHelperPerformActions () {
       let failedAtIndex = spiHelperSectionId.length + 1
       spiHelperSectionId.every(await async function (sectionId, index) {
         logMessage += '\n** Archived section'
-        let archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
+        const archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
         const postExpandPercent =
           (await spiHelperGetPostExpandSize(spiHelperPageName, sectionId) +
           await spiHelperGetPostExpandSize(spiHelperGetArchiveName())) /
@@ -1664,7 +1665,7 @@ async function spiHelperPerformActions () {
           await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false)
           await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
         }
-        if(!await spiHelperSaveToArchive(archiveText)) {
+        if(!await spiHelperSaveToArchive(archivetext)) {
           failedAtIndex = index
           return false
         }
@@ -1892,10 +1893,10 @@ async function spiHelperSaveToArchive (archivetext) {
 
 async function spiHelperBlankCaseSection (sectionId) {
   'use strict'
-   await spiHelperEditPage(spiHelperPageName, '', 'Archiving case section to [[' + spiHelperGetInterwikiPrefix() + spiHelperGetArchiveName() + ']]',
-     false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
-   // Update to the latest revision ID
-   spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
+  await spiHelperEditPage(spiHelperPageName, '', 'Archiving case section to [[' + spiHelperGetInterwikiPrefix() + spiHelperGetArchiveName() + ']]',
+    false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
+  // Update to the latest revision ID
+  spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
 }
 
 async function spiHelperGetArchiveTextForCaseSection (sectionId) {
