@@ -1473,7 +1473,7 @@ async function spiHelperPerformActions () {
   }
 
   let sectionCount = await spiHelperGetSectionIDs().length
-  spiHelperSectionId.every((sectionId, index) => {
+  spiHelperSectionId.every(await async (sectionId, index) => {
     if (sectionCount !== await spiHelperGetSectionIDs().length) {
       // If total section count has changed since the last spiHelperEditPage call then this is either due to the comment section including a comment
       // or another editor making an edit to the page. If this is the latter it will be handled by baseRevId in spiHelperEditPage. If it is the former, then all that needs to done
