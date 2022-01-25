@@ -1479,7 +1479,7 @@ async function spiHelperPerformActions () {
       // or another editor making an edit to the page. If this is the latter it will be handled by baseRevId in spiHelperEditPage. If it is the former, then all that needs to done
       // is add the difference to every sectionId left to process (as the cases are worked on from the top down and archiving is done later).
       // The section IDs that have already been processed will be still fine.
-      spiHelperSectionId.forEach((sectionIdToModify, indexForModifyLoop) => {
+      spiHelperSectionId.forEach(await async function (sectionIdToModify, indexForModifyLoop) {
         if (index < indexForModifyLoop) {
           return
         }
@@ -1642,7 +1642,7 @@ async function spiHelperPerformActions () {
       // Just archive the selected sections
       let archivetext = ''
       let failedAtIndex = spiHelperSectionId.length + 1
-      spiHelperSectionId.every((sectionId, index) => {
+      spiHelperSectionId.every(await async function (sectionId, index) {
         logMessage += '\n** Archived section'
         archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId))
         const postExpandPercent =
@@ -1679,7 +1679,7 @@ async function spiHelperPerformActions () {
       await spiHelperMoveCase(renameTarget)
     } else {
       // Option 2: this is a single-section(s) case move or merge
-      spiHelperSectionId.slice().reverse().forEach((sectionId) => { // Reversed for the same reason as why it was reversed for the archive code
+      spiHelperSectionId.slice().reverse().forEach(await async function (sectionId) { // Reversed for the same reason as why it was reversed for the archive code
         logMessage += '\n** moved section to ' + renameTarget
         await spiHelperMoveCaseSection(renameTarget, sectionId)
       }
