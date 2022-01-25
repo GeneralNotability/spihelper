@@ -367,7 +367,7 @@ async function spiHelperInit () {
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
     const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
     $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
-    $li.append(" ")
+    $li.append(' ')
     $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
   }
   // Selected-sections selector. Used to change the case status, close or archive selected sections all at once. Don't show if there are no cases
@@ -1085,14 +1085,14 @@ async function spiHelperPerformActions () {
   if (spiHelperCaseModeSelected.single || spiHelperSectionId.length < 2) {
     logMessage += ' (section ' + spiHelperSectionName[0] + ')'
   } else if (spiHelperCaseModeSelected.some) {
-    logMessage += ' (sections ' + spiHelperSectionName.reduce((text, sectionName, i) => { 
+    logMessage += ' (sections ' + spiHelperSectionName.reduce((text, sectionName, i) => {
       return text + (spiHelperSectionName.length - 1 > i ? ', ' : ' and ') + sectionName
     })
   } else {
     logMessage += ' (full case)'
   }
   logMessage += ' ~~~~~'
- 
+
   if (spiHelperActionsSelected.Block) {
     let sockmaster = ''
     let altmaster = ''
@@ -1460,16 +1460,21 @@ async function spiHelperPerformActions () {
       }
     }
   }
- 
+
   if (spiHelperActionsSelected.SpiMgmt) {
     const newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams)
-    sectionText = sectionText.replace(spiHelperArchiveNoticeRegex, newArchiveNotice)
+    let sectionText = sectionText.replace(spiHelperArchiveNoticeRegex, newArchiveNotice)
     if (editsummary) {
       editsummary += ', update archivenotice'
     } else {
       editsummary = 'Update archivenotice'
     }
     logMessage += '\n** Updated archivenotice'
+    const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
+      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
+    if (editResult) {
+      spiHelperStartingRevID = editResult.edit.newrevid
+    }
   }
 
   let sectionCount = await spiHelperGetSectionIDs().length
@@ -1640,11 +1645,10 @@ async function spiHelperPerformActions () {
     } else {
       logMessage += '\n** Archived cases'
       // Just archive the selected sections
-      let archivetext = ''
       let failedAtIndex = spiHelperSectionId.length + 1
       spiHelperSectionId.every(await async function (sectionId, index) {
         logMessage += '\n** Archived section'
-        archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
+        let archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
         const postExpandPercent =
           (await spiHelperGetPostExpandSize(spiHelperPageName, sectionId) +
           await spiHelperGetPostExpandSize(spiHelperGetArchiveName())) /
@@ -1872,7 +1876,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
     await spiHelperBlankCaseSection(sectionId)
   }
 }
- 
+
 async function spiHelperSaveToArchive (archivetext) {
   const archiveSuccess = await spiHelperEditPage(spiHelperGetArchiveName(), archivetext,
     'Archiving case section from [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]',
@@ -1885,7 +1889,7 @@ async function spiHelperSaveToArchive (archivetext) {
   }
   return true
 }
- 
+
 async function spiHelperBlankCaseSection (sectionId) {
   'use strict'
    await spiHelperEditPage(spiHelperPageName, '', 'Archiving case section to [[' + spiHelperGetInterwikiPrefix() + spiHelperGetArchiveName() + ']]',
@@ -1893,7 +1897,7 @@ async function spiHelperBlankCaseSection (sectionId) {
    // Update to the latest revision ID
    spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
 }
- 
+
 async function spiHelperGetArchiveTextForCaseSection (sectionId) {
   'use strict'
   let sectionText = await spiHelperGetPageText(spiHelperPageName, true, sectionId)
@@ -3107,7 +3111,7 @@ async function spiHelperSetCheckboxesBySection () {
     // Now work out if to enable/disable Close cases and Archive cases. If all cases are closed, then closed cases cannot be used. If all cases are not closed, then archive cases
     // cannot be used
     spiHelperUpdateCaseActions()
-    $('#spiHelper_multipleSectionSelect input', $topView).change(() => {
+    $('#spiHelper_multipleSectionSelect input', $topView).on('change', () => {
       spiHelperUpdateCaseActions()
     })
   } else if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
@@ -3178,7 +3182,7 @@ async function spiHelperUpdateCaseActions () {
   const $warningText = $('#spiHelper_warning', $topView)
   $warningText.show()
   $('#spiHelper_multipleSectionSelect', $topView).find('input').prop('disabled', false)
-  const selectedSectionIds = $('#spiHelper_multipleSectionSelect', $topView).find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
+  const selectedSectionIds = $multipleSectionSelect.find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
   console.log(selectedSectionIds)
   const $archiveBox = $('#spiHelper_Archive', $topView)
   const $closeBox = $('#spiHelper_Close', $topView)
@@ -3216,9 +3220,9 @@ async function spiHelperUpdateCaseActions () {
     const isClosed = spiHelperCaseClosedRegex.test(casestatus)
 
     if ((!$archiveBox.prop('disabled') && !isClosed) || (!$closeBox.prop('disabled') && isClosed)) {
-      $('#spiHelper_multipleSectionSelect', $topView).find('input').each(function (element) {
+      $multipleSectionSelect.find('input').each(function (element) {
         if ($(element).value() === s.index) {
-          $(element).prop('disabled', true) 
+          $(element).prop('disabled', true)
         }
       })
     } else if (isClosed && $archiveBox.prop('disabled')) {
