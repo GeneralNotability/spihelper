@@ -1626,8 +1626,8 @@ async function spiHelperPerformActions () {
       editsummary = ''
     }
     return true
-  }
-  
+  })
+
   if (spiHelperActionsSelected.Archive) {
     // Archive the case
     if (spiHelperCaseModeSelected.all) {
