@@ -1666,10 +1666,9 @@ async function spiHelperPerformActions () {
         }
       })
       spiHelperSectionId.slice().reverse().forEach((sectionId, indexV2) => { // Reversed because this means that the yet to be processed sectionIDs won't have changed unless a non-tool edit is made in the iterim.
-        if (spiHelperSectionId.length - indexV2 >= failedAtIndex) {
-          continue
+        if (spiHelperSectionId.length - indexV2 < failedAtIndex) {
+          spiHelperBlankCaseSection(sectionId)
         }
-        spiHelperBlankCaseSection(sectionId)
       })
     }
   } else if (spiHelperActionsSelected.Rename && renameTarget) {
