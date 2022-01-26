@@ -979,6 +979,11 @@ async function spiHelperPerformActions () {
   const overrideExisting = $('#spiHelper_override', $actionView).prop('checked')
   /** @type {boolean} */
   const hideLockNames = $('#spiHelper_hidelocknames', $actionView).prop('checked')
+  /** @type {boolean} */
+  const addCommentToEverySection = $('#spiHelper_duplicateComment', $actionView).prop('checked')
+  /** @type {boolean} */
+  const referenceCommentInOtherSections = $('#spiHelper_referenceComment', $actionView).prop('checked')
+  
 
   if (spiHelperActionsSelected.Case_act) {
     newCaseStatus = $('#spiHelper_CaseAction', $actionView).val().toString()
@@ -1479,6 +1484,9 @@ async function spiHelperPerformActions () {
   }
 
   let sectionCount = await spiHelperGetSectionIDs().length
+  if (!/~~~~/.test(comment)) {
+    comment += ' ~~~~'
+  }
   spiHelperSectionId.every(await async function (sectionId, index) {
     if (sectionCount !== await spiHelperGetSectionIDs().length) {
       // If total section count has changed since the last spiHelperEditPage call then this is either due to the comment section including a comment
@@ -1573,18 +1581,28 @@ async function spiHelperPerformActions () {
         sectionText.replace('<!-- All comments go ABOVE this line, please. -->', '')
         sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
       }
-      if (!/~~~~/.test(comment)) {
-        comment += ' ~~~~'
+      let commentTemp = ''
+      if (spiHelperCaseModeSelected.single || spiHelperCaseModeSelected.some && (addCommentToEverySection || index === 1)) {
+        commentTemp = comment
+      } else if (referenceCommentInOtherSections) {
+        commentTemp = 'See the report dated' + spiHelperSectionName[0]
+      } else {
+        // If some mode is selected but neither of the options were selected then only add the comment to the first section (default)
+        if (index === 1) {
+          commentTemp = comment
+        } else {
+          commentTemp = false
+        }
       }
       // Clerks and admins post in the admin section
-      if (spiHelperIsClerk() || spiHelperIsAdmin()) {
+      if ((spiHelperIsClerk() || spiHelperIsAdmin()) && commentTemp) {
         // Complicated regex to find the first regex in the admin section
         // The weird (\n|.) is because we can't use /s (dot matches newline) regex mode without ES9,
         // I don't want to go there yet
-        sectionText = sectionText.replace(/\n*----(?!(\n|.)*----)/, '\n' + comment + '\n----')
-      } else { // Everyone else posts in the "other users" section
+        sectionText = sectionText.replace(/\n*----(?!(\n|.)*----)/, '\n' + commentTemp + '\n----')
+      } else if (commentTemp) { // Everyone else posts in the "other users" section
         sectionText = sectionText.replace(spiHelperAdminSectionWithPrecedingNewlinesRegex,
-          '\n' + comment + '\n====<big>Clerk, CheckUser, and/or patrolling admin comments</big>====\n')
+          '\n' + commentTemp + '\n====<big>Clerk, CheckUser, and/or patrolling admin comments</big>====\n')
       }
       if (editsummary) {
         editsummary += ', comment'
