@@ -609,6 +609,13 @@ async function spiHelperGenerateForm () {
     $('.spiHelper_forSomeCases', $actionView).hide()
     $('.spiHelper_notForSomeCases', $actionView).show()
   }
+  if (spiHelperCaseModeSelected.all) {
+    $('.spiHelper_allCasesOnly').show()
+    $('.spiHelper_singleCaseOnly').hide()
+  } else {
+    $('.spiHelper_allCasesOnly').hide()
+    $('.spiHelper_singleCaseOnly').show()
+  }
   if (spiHelperActionsSelected.Case_act) {
     /** @type {SelectOption[]} Generated array of values for the case status select box */
     const selectOpts = [
