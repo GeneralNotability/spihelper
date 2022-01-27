@@ -3234,7 +3234,7 @@ async function spiHelperLoadSettings () {
           }
         }
         spiHelperSettings[k] = v
-      })
+      }
     }
   } catch (error) {
     mw.log.error('Error retrieving your spihelper-options.js')
