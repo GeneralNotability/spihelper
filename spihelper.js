@@ -2789,7 +2789,7 @@ async function spiHelperParseWikitext(wikitext) {
  * Returns true if the date provided is a valid date for strtotime in PHP (determined by using the time parser function and a parse API call)
  */
 async function spiHelperValidateDate (dateInStringFormat) {
-  const response = spiHelperParseWikitext('{{#time:r|' + dateInStringFormat + '}}')
+  const response = await spiHelperParseWikitext('{{#time:r|' + dateInStringFormat + '}}')
   return !response.includes('Error: Invalid time.')
 }
 
@@ -3225,7 +3225,7 @@ async function spiHelperLoadSettings () {
             return
           }
         } else if (k in spiHelperSettingsNeedingValidDate) {
-          if (!spiHelperValidateDate(v)) {
+          if (!await spiHelperValidateDate(v)) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
             return
           }
