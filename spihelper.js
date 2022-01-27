@@ -103,6 +103,14 @@ const spiHelperValidSettings = {
   debugForceAdminState: [null, true, false]
 }
 
+const spiHelperSettingsNeedingValidDate = [
+  'watchCaseExpiry',
+  'watchArchiveExpiry',
+  'watchTaggedUserExpiry',
+  'watchNewCatsExpiry',
+  'watchBlockedUserExpiry'
+]
+
 /* Globals to describe the current SPI page */
 
 /** @type {string} Name of the SPI page in wiki title form
@@ -2755,6 +2763,37 @@ async function spiHelperGetSiteRestrictionInformation () {
 }
 
 /**
+ * Parse given text as wikitext without it needing to be currently saved onwiki.
+ *
+ */
+async function spiHelperParseWikitext(wikitext) {
+  // For enwiki only for now
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'parse',
+      prop: 'text',
+      text: wikitext,
+      wrapoutputclass: '',
+      disablelimitreport: 1,
+      disableeditsection: 1,
+      contentmodel: 'wikitext'
+    })
+    return response.parse.text['*']
+  } catch (error) {
+    return ""
+  }
+}
+
+/**
+ * Returns true if the date provided is a valid date for strtotime in PHP (determined by using the time parser function and a parse API call)
+ */
+async function spiHelperValidateDate (dateInStringFormat) {
+  const response = spiHelperParseWikitext('{{#time:r|' + dateInStringFormat + '}}')
+  return !response.includes('Error: Invalid time.')
+}
+
+/**
  * Pretty obvious - gets the name of the archive. This keeps us from having to regen it
  * if we rename the case
  *
@@ -3182,6 +3221,11 @@ async function spiHelperLoadSettings () {
       Object.entries(spiHelperCustomOpts).forEach(([k, v]) => {
         if (k in spiHelperValidSettings) {
           if (spiHelperValidSettings[k].indexOf(v) === -1) {
+            mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
+            return
+          }
+        } else if (k in spiHelperSettingsNeedingValidDate) {
+          if (!spiHelperValidateDate(v)) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
             return
           }
