@@ -509,7 +509,7 @@ const spiHelperActionViewHTML = `
         <label for="spiHelper_duplicateComment">Add the comment to every selected section.</label>
       </li>
       <li>
-        <input type="checkbox" name="spiHelper_referenceComment" id="spiHelper_referenceComment" />
+        <input type="checkbox" name="spiHelper_referenceComment" id="spiHelper_referenceComment" checked="checked" />
         <label for="spiHelper_referenceComment">Add a reference to the section with the comment in every other section.</label>
       </li>
     </ul>
@@ -1099,7 +1099,7 @@ async function spiHelperPerformActions () {
   } else if (spiHelperCaseModeSelected.some) {
     logMessage += ' (sections ' + spiHelperSectionName.reduce((text, sectionName, i) => {
       return text + (spiHelperSectionName.length - 1 > i ? ', ' : ' and ') + sectionName
-    })
+    }) + ')'
   } else {
     logMessage += ' (full case)'
   }
@@ -1494,17 +1494,21 @@ async function spiHelperPerformActions () {
   if (!/~~~~/.test(comment)) {
     comment += ' ~~~~'
   }
-  spiHelperSectionId.every(await async function (sectionId, index) {
-    if (sectionCount !== await spiHelperGetSectionIDs().length) {
+  for (let index = 0; index < spiHelperSectionId.length; index++) {
+    console.log(index)
+    let sectionId = spiHelperSectionId[index]
+    console.log(sectionId)
+    let newSectionCount = spiHelperGetSectionIDs().length
+    if (sectionCount !== newSectionCount) {
       // If total section count has changed since the last spiHelperEditPage call then this is either due to the comment section including a comment
       // or another editor making an edit to the page. If this is the latter it will be handled by baseRevId in spiHelperEditPage. If it is the former, then all that needs to done
       // is add the difference to every sectionId left to process (as the cases are worked on from the top down and archiving is done later).
       // The section IDs that have already been processed will be still fine.
-      spiHelperSectionId.forEach(await async function (sectionIdToModify, indexForModifyLoop) {
+      spiHelperSectionId.forEach((sectionIdToModify, indexForModifyLoop) => {
         if (index < indexForModifyLoop) {
           return
         }
-        spiHelperSectionId[indexForModifyLoop] = sectionIdToModify + (await spiHelperGetSectionIDs().length - sectionCount)
+        spiHelperSectionId[indexForModifyLoop] = sectionIdToModify + (newSectionCount - sectionCount)
       })
     }
     let sectionText = await spiHelperGetPageText(spiHelperPageName, true, sectionId)
@@ -1519,7 +1523,7 @@ async function spiHelperPerformActions () {
         newCaseStatus = oldCaseStatus
       }
 
-      if (spiHelperActionsSelected.Case_act && newCaseStatus !== 'noaction') {
+      if (spiHelperActionsSelected.Case_act && newCaseStatus !== 'noaction' && index === 0) {
         switch (newCaseStatus) {
           case 'reopen':
             newCaseStatus = 'open'
@@ -1578,7 +1582,7 @@ async function spiHelperPerformActions () {
           default:
             console.error('Unexpected case status value ' + newCaseStatus)
         }
-        logMessage += '\n** changed case status from ' + oldCaseStatus + ' to ' + newCaseStatus
+        logMessage += '\n** changed case status' + (spiHelperCaseModeSelected.some ? 'es' : '') + ' from ' + oldCaseStatus + ' to ' + newCaseStatus
       }
     }
 
@@ -1589,17 +1593,13 @@ async function spiHelperPerformActions () {
         sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
       }
       let commentTemp = ''
-      if (spiHelperCaseModeSelected.single || spiHelperCaseModeSelected.some && (addCommentToEverySection || index === 1)) {
+      if (spiHelperCaseModeSelected.single || spiHelperCaseModeSelected.all || spiHelperCaseModeSelected.some && ((addCommentToEverySection || index === 0) || (spiHelperSectionId.length < 2))) {
         commentTemp = comment
-      } else if (referenceCommentInOtherSections) {
-        commentTemp = 'See the report dated' + spiHelperSectionName[0]
+      } else if (spiHelperCaseModeSelected.some && referenceCommentInOtherSections) {
+        commentTemp = '* See the report dated ' + spiHelperSectionName[0] + '. ~~~~'
       } else {
         // If some mode is selected but neither of the options were selected then only add the comment to the first section (default)
-        if (index === 1) {
-          commentTemp = comment
-        } else {
-          commentTemp = false
-        }
+        commentTemp = false
       }
       // Clerks and admins post in the admin section
       if ((spiHelperIsClerk() || spiHelperIsAdmin()) && commentTemp) {
@@ -1611,22 +1611,26 @@ async function spiHelperPerformActions () {
         sectionText = sectionText.replace(spiHelperAdminSectionWithPrecedingNewlinesRegex,
           '\n' + commentTemp + '\n====<big>Clerk, CheckUser, and/or patrolling admin comments</big>====\n')
       }
-      if (editsummary) {
-        editsummary += ', comment'
-      } else {
-        editsummary = 'Comment'
+      if (index === 0) {
+        if (editsummary) {
+          editsummary += ', comment'
+        } else {
+          editsummary = 'Comment'
+        }
+        logMessage += '\n** commented'
       }
-      logMessage += '\n** commented'
     }
 
     if (spiHelperActionsSelected.Close) {
       newCaseStatus = 'close'
-      if (editsummary) {
-        editsummary += ', marking case as closed'
-      } else {
-        editsummary = 'Marking case as closed'
+      if (index === 0) {
+        if (editsummary) {
+          editsummary += ', marking case' + (spiHelperCaseModeSelected.some ? 's' : '') + ' as closed'
+        } else {
+          editsummary = 'Marking case' + (spiHelperCaseModeSelected.some ? 's' : '') + ' as closed'
+        }
+        logMessage += '\n** closed case' + (spiHelperCaseModeSelected.some ? 's' : '')
       }
-      logMessage += '\n** closed case'
     }
     if (!spiHelperCaseModeSelected.all && !spiHelperIsThisPageAnArchive) {
       const caseStatusText = spiHelperCaseStatusRegex.exec(sectionText)[0]
@@ -1639,6 +1643,7 @@ async function spiHelperPerformActions () {
     }
 
     // Make all of the requested edits (synchronous since we might make more changes to the page), unless the page is an archive (as there should be no edits made)
+    sectionCount = newSectionCount
     if (!spiHelperIsThisPageAnArchive) {
       const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
         spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
@@ -1650,14 +1655,10 @@ async function spiHelperPerformActions () {
               .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
             .appendTo($('#spiHelper_status', document))
         }
-        return false
       }
-      sectionCount = await spiHelperGetSectionIDs().length
-      spiHelperStartingRevID = editResult.edit.newrevid
-      editsummary = ''
+      spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
     }
-    return true
-  })
+  }
 
   if (spiHelperActionsSelected.Archive) {
     // Archive the case
@@ -1672,7 +1673,8 @@ async function spiHelperPerformActions () {
       logMessage += '\n** Archived cases'
       // Just archive the selected sections
       let failedAtIndex = spiHelperSectionId.length + 1
-      spiHelperSectionId.every(await async function (sectionId, index) {
+      for (index = 0; index < spiHelperSectionId; index++) {
+        let sectionId = spiHelperSectionId[index]
         logMessage += '\n** Archived section'
         const archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
         const postExpandPercent =
@@ -1694,12 +1696,13 @@ async function spiHelperPerformActions () {
           failedAtIndex = index
           return false
         }
-      })
-      spiHelperSectionId.slice().reverse().forEach((sectionId, indexV2) => { // Reversed because this means that the yet to be processed sectionIDs won't have changed unless a non-tool edit is made in the iterim.
+      }
+      for (index = spiHelperSectionId.length - 1; index > 0; index--) { // Reversed because this means that the yet to be processed sectionIDs won't have changed unless a non-tool edit is made in the iterim.
+        let sectionId = spiHelperSectionId[index]
         if (spiHelperSectionId.length - indexV2 < failedAtIndex) {
-          spiHelperBlankCaseSection(sectionId)
+          await spiHelperBlankCaseSection(sectionId)
         }
-      })
+      }
     }
   } else if (spiHelperActionsSelected.Rename && renameTarget) {
     if (spiHelperCaseModeSelected.all) {
@@ -1708,7 +1711,8 @@ async function spiHelperPerformActions () {
       await spiHelperMoveCase(renameTarget)
     } else {
       // Option 2: this is a single-section(s) case move or merge
-      spiHelperSectionId.slice().reverse().forEach(await async function (sectionId) { // Reversed for the same reason as why it was reversed for the archive code
+      for (index = spiHelperSectionId.length - 1; index > 0; index--) { // Reversed for the same reason as why it was reversed for the archive code
+        let sectionId = spiHelperSectionId[index]
         logMessage += '\n** moved section to ' + renameTarget
         await spiHelperMoveCaseSection(renameTarget, sectionId)
       })
