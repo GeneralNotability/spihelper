@@ -121,10 +121,10 @@ let spiHelperCaseName
 let spiHelperCaseSections = []
 
 /** @type {?number} Selected section, "null" as the first element means that we're opearting on the entire page or in selected sections mode */
-let spiHelperSectionId = [null]
+let spiHelperSelectedSectionIds = [null]
 
 /** @type {?string} Selected section's name (e.g. "10 June 2020") */
-let spiHelperSectionName = [null]
+let spiHelperSelectedSectionNames = [null]
 
 /** @type {ParsedArchiveNotice} */
 let spiHelperArchiveNoticeParams
@@ -555,31 +555,30 @@ async function spiHelperGenerateForm () {
   spiHelperCaseModeSelected.single = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
   const spiHelperSelectedCaseStatuses = new Set()
   if (spiHelperCaseModeSelected.some) {
-    spiHelperSectionId = $('#spiHelper_multipleSectionSelect', $topView).find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
-    console.log(spiHelperSectionId)
+    spiHelperSelectedSectionIds = $('#spiHelper_multipleSectionSelect', $topView).find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
     for (let i = 0; i < spiHelperCaseSections.length; i++) {
-      if (spiHelperSectionId.indexOf(spiHelperCaseSections[i].index) >= 0) {
-        spiHelperSectionName[spiHelperSectionId.indexOf(spiHelperCaseSections[i].index)] = spiHelperCaseSections[i].line
+      if (spiHelperSelectedSectionIds.indexOf(spiHelperCaseSections[i].index) >= 0) {
+        spiHelperSelectedSectionNames[spiHelperSelectedSectionIds.indexOf(spiHelperCaseSections[i].index)] = spiHelperCaseSections[i].line
         const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperCaseSections[i].index)
         const result = spiHelperCaseStatusRegex.exec(sectionText)
         let casestatus = ''
         if (result) {
           casestatus = result[1]
         } else if (!spiHelperIsThisPageAnArchive) {
-          $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName[spiHelperSectionId.indexOf(spiHelperCaseSections[i].index)]}!`))
+          $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[spiHelperSelectedSectionIds.indexOf(spiHelperCaseSections[i].index)]}!`))
           $warningText.show()
         }
         spiHelperSelectedCaseStatuses.add(casestatus)
       }
     }
   } else if (spiHelperCaseModeSelected.single) {
-    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[0])
     const result = spiHelperCaseStatusRegex.exec(sectionText)
     let casestatus = ''
     if (result) {
       casestatus = result[1]
     } else if (!spiHelperIsThisPageAnArchive) {
-      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName[0]}!`))
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[0]}!`))
       $warningText.show()
     }
     spiHelperSelectedCaseStatuses.add(casestatus)
@@ -602,7 +601,7 @@ async function spiHelperGenerateForm () {
     spiHelperInit()
   })
 
-  if (spiHelperCaseModeSelected.some && spiHelperSectionId.length > 1) {
+  if (spiHelperCaseModeSelected.some && spiHelperSelectedSectionIds.length > 1) {
     $('.spiHelper_forSomeCases', $actionView).show()
     $('.spiHelper_notForSomeCases', $actionView).hide()
   } else {
@@ -757,11 +756,11 @@ async function spiHelperGenerateForm () {
   if (spiHelperActionsSelected.Block) {
     let pagetext = ''
     if (spiHelperCaseModeSelected.some) {
-      for (let i = 0; i < spiHelperSectionId.length; i++) {
-        pagetext = pagetext + await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[i])
+      for (let i = 0; i < spiHelperSelectedSectionIds.length; i++) {
+        pagetext = pagetext + await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[i])
       }
     } else {
-      pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
+      pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[0])
     }
     if (spiHelperIsAdmin()) {
       $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
@@ -856,8 +855,8 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_blockTagView', $actionView).hide()
   }
   if (spiHelperActionsSelected.Rename) {
-    if (spiHelperCaseModeSelected.single || spiHelperSectionId.length <= 1) {
-      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName[0] + '"')
+    if (spiHelperCaseModeSelected.single || spiHelperSelectedSectionIds.length <= 1) {
+      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSelectedSectionNames[0] + '"')
     } else if (spiHelperCaseModeSelected.some) {
       $('#spiHelper_moveHeader', $actionView).text('Move sections')
     } else {
@@ -1093,11 +1092,11 @@ async function spiHelperPerformActions () {
 
   let editsummary = ''
   let logMessage = '* [[' + spiHelperPageName + ']]'
-  if (spiHelperCaseModeSelected.single || spiHelperSectionId.length < 2) {
-    logMessage += ' (section ' + spiHelperSectionName[0] + ')'
+  if (spiHelperCaseModeSelected.single || spiHelperSelectedSectionIds.length < 2) {
+    logMessage += ' (section ' + spiHelperSelectedSectionNames[0] + ')'
   } else if (spiHelperCaseModeSelected.some) {
-    logMessage += ' (sections ' + spiHelperSectionName.reduce((text, sectionName, i) => {
-      return text + (spiHelperSectionName.length - 1 > i ? ', ' : ' and ') + sectionName
+    logMessage += ' (sections ' + spiHelperSelectedSectionNames.reduce((text, sectionName, i) => {
+      return text + (spiHelperSelectedSectionNames.length - 1 > i ? ', ' : ' and ') + sectionName
     }) + ')'
   } else {
     logMessage += ' (full case)'
@@ -1493,19 +1492,19 @@ async function spiHelperPerformActions () {
   if (!/~~~~/.test(comment)) {
     comment += ' ~~~~'
   }
-  for (let index = 0; index < spiHelperSectionId.length; index++) {
-    const sectionId = spiHelperSectionId[index]
+  for (let index = 0; index < spiHelperSelectedSectionIds.length; index++) {
+    const sectionId = spiHelperSelectedSectionIds[index]
     const newSectionCount = spiHelperGetSectionIDs().length
     if (sectionCount !== newSectionCount) {
       // If total section count has changed since the last spiHelperEditPage call then this is either due to the comment section including a comment
       // or another editor making an edit to the page. If this is the latter it will be handled by baseRevId in spiHelperEditPage. If it is the former, then all that needs to done
       // is add the difference to every sectionId left to process (as the cases are worked on from the top down and archiving is done later).
       // The section IDs that have already been processed will be still fine.
-      spiHelperSectionId.forEach((sectionIdToModify, indexForModifyLoop) => {
+      spiHelperSelectedSectionIds.forEach((sectionIdToModify, indexForModifyLoop) => {
         if (index < indexForModifyLoop) {
           return
         }
-        spiHelperSectionId[indexForModifyLoop] = sectionIdToModify + (newSectionCount - sectionCount)
+        spiHelperSelectedSectionIds[indexForModifyLoop] = sectionIdToModify + (newSectionCount - sectionCount)
       })
     }
     let sectionText = await spiHelperGetPageText(spiHelperPageName, true, sectionId)
@@ -1590,10 +1589,10 @@ async function spiHelperPerformActions () {
         sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
       }
       let commentTemp = ''
-      if ((spiHelperCaseModeSelected.single || spiHelperCaseModeSelected.all) || (spiHelperCaseModeSelected.some && ((addCommentToEverySection || index === 0) || (spiHelperSectionId.length < 2)))) {
+      if ((spiHelperCaseModeSelected.single || spiHelperCaseModeSelected.all) || (spiHelperCaseModeSelected.some && ((addCommentToEverySection || index === 0) || (spiHelperSelectedSectionIds.length < 2)))) {
         commentTemp = comment
       } else if (spiHelperCaseModeSelected.some && referenceCommentInOtherSections) {
-        commentTemp = '* See the report dated ' + spiHelperSectionName[0] + '. ~~~~'
+        commentTemp = '* See the report dated ' + spiHelperSelectedSectionNames[0] + '. ~~~~'
       } else {
         // If some mode is selected but neither of the options were selected then only add the comment to the first section (default)
         commentTemp = false
@@ -1663,15 +1662,15 @@ async function spiHelperPerformActions () {
       // Archive the whole case
       logMessage += '\n** Archived case'
       await spiHelperArchiveCase()
-      await spiHelperArchiveCaseSection(spiHelperSectionId[0])
+      await spiHelperArchiveCaseSection(spiHelperSelectedSectionIds[0])
     } else if (spiHelperCaseModeSelected.single) {
       logMessage += '\n** Archived case'
     } else {
       logMessage += '\n** Archived cases'
       // Just archive the selected sections
-      let failedAtIndex = spiHelperSectionId.length + 1
-      for (let index = 0; index < spiHelperSectionId.length; index++) {
-        const sectionId = spiHelperSectionId[index]
+      let failedAtIndex = spiHelperSelectedSectionIds.length + 1
+      for (let index = 0; index < spiHelperSelectedSectionIds.length; index++) {
+        const sectionId = spiHelperSelectedSectionIds[index]
         logMessage += '\n** Archived section'
         const archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
         const postExpandPercent =
@@ -1694,9 +1693,9 @@ async function spiHelperPerformActions () {
           return false
         }
       }
-      for (let index = spiHelperSectionId.length - 1; index > 0; index--) { // Reversed because this means that the yet to be processed sectionIDs won't have changed unless a non-tool edit is made in the iterim.
-        const sectionId = spiHelperSectionId[index]
-        if (spiHelperSectionId.length - index < failedAtIndex) {
+      for (let index = spiHelperSelectedSectionIds.length - 1; index > 0; index--) { // Reversed because this means that the yet to be processed sectionIDs won't have changed unless a non-tool edit is made in the iterim.
+        const sectionId = spiHelperSelectedSectionIds[index]
+        if (spiHelperSelectedSectionIds.length - index < failedAtIndex) {
           await spiHelperBlankCaseSection(sectionId)
         }
       }
@@ -1708,8 +1707,8 @@ async function spiHelperPerformActions () {
       await spiHelperMoveCase(renameTarget)
     } else {
       // Option 2: this is a single-section(s) case move or merge
-      for (let index = spiHelperSectionId.length - 1; index > 0; index--) { // Reversed for the same reason as why it was reversed for the archive code
-        const sectionId = spiHelperSectionId[index]
+      for (let index = spiHelperSelectedSectionIds.length - 1; index > 0; index--) { // Reversed for the same reason as why it was reversed for the archive code
+        const sectionId = spiHelperSelectedSectionIds[index]
         logMessage += '\n** moved section to ' + renameTarget
         await spiHelperMoveCaseSection(renameTarget, sectionId)
       }
@@ -3084,15 +3083,15 @@ async function spiHelperSetCheckboxesBySection () {
   const $topView = $('#spiHelper_topViewDiv', document)
   // Get the value of the selection box
   if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
-    spiHelperSectionId = [null]
-    spiHelperSectionName = [null]
+    spiHelperSelectedSectionIds = [null]
+    spiHelperSelectedSectionNames = [null]
   } else if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
-    spiHelperSectionId = [null]
-    spiHelperSectionName = [null]
+    spiHelperSelectedSectionIds = [null]
+    spiHelperSelectedSectionNames = [null]
   } else {
-    spiHelperSectionId = [parseInt($('#spiHelper_sectionSelect', $topView).val().toString())]
+    spiHelperSelectedSectionIds = [parseInt($('#spiHelper_sectionSelect', $topView).val().toString())]
     const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
-    spiHelperSectionName = [spiHelperCaseSections[$sectionSelect.prop('selectedIndex')].line]
+    spiHelperSelectedSectionNames = [spiHelperCaseSections[$sectionSelect.prop('selectedIndex')].line]
   }
 
   const $warningText = $('#spiHelper_warning', $topView)
@@ -3154,7 +3153,7 @@ async function spiHelperSetCheckboxesBySection () {
     // enable the move box
     $moveBox.prop('disabled', false)
   } else {
-    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId[0])
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[0])
     if (!spiHelperSectionRegex.test(sectionText)) {
       // Nothing to do here.
       return
@@ -3170,7 +3169,7 @@ async function spiHelperSetCheckboxesBySection () {
     if (result) {
       casestatus = result[1]
     } else if (!spiHelperIsThisPageAnArchive) {
-      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName[0]}!`))
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[0]}!`))
       $warningText.show()
     }
 
@@ -3239,7 +3238,7 @@ async function spiHelperUpdateCaseActions () {
     if (result) {
       casestatus = result[1]
     } else if (!spiHelperIsThisPageAnArchive) {
-      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName[selectedSectionIds.indexOf(s.index)]}!`))
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[selectedSectionIds.indexOf(s.index)]}!`))
       $warningText.show()
       continue
     }
