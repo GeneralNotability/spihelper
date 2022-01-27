@@ -2766,7 +2766,7 @@ async function spiHelperGetSiteRestrictionInformation () {
  * Parse given text as wikitext without it needing to be currently saved onwiki.
  *
  */
-async function spiHelperParseWikitext(wikitext) {
+async function spiHelperParseWikitext (wikitext) {
   // For enwiki only for now
   const api = new mw.Api()
   try {
@@ -2781,7 +2781,7 @@ async function spiHelperParseWikitext(wikitext) {
     })
     return response.parse.text['*']
   } catch (error) {
-    return ""
+    return ''
   }
 }
 
@@ -3221,7 +3221,7 @@ async function spiHelperLoadSettings () {
       const keys = Object.keys(spiHelperCustomOpts)
       for (let index = 0; index < keys.length; index++) {
         const k = keys[index]
-        const v = spiHelperCustomOps[k]
+        const v = spiHelperCustomOpts[k]
         if (k in spiHelperValidSettings) {
           if (spiHelperValidSettings[k].indexOf(v) === -1) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
