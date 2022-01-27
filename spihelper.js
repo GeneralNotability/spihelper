@@ -3218,7 +3218,10 @@ async function spiHelperLoadSettings () {
   try {
     await mw.loader.getScript('/w/index.php?title=Special:MyPage/spihelper-options.js&action=raw&ctype=text/javascript')
     if (typeof spiHelperCustomOpts !== 'undefined') {
-      Object.entries(spiHelperCustomOpts).forEach(([k, v]) => {
+      const keys = Object.keys(spiHelperCustomOpts)
+      for (let index = 0; index < keys.length; index++) {
+        const k = keys[index]
+        const v = spiHelperCustomOps[k]
         if (k in spiHelperValidSettings) {
           if (spiHelperValidSettings[k].indexOf(v) === -1) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
