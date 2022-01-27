@@ -1715,7 +1715,7 @@ async function spiHelperPerformActions () {
         let sectionId = spiHelperSectionId[index]
         logMessage += '\n** moved section to ' + renameTarget
         await spiHelperMoveCaseSection(renameTarget, sectionId)
-      })
+      }
     }
   }
   if (spiHelperSettings.log) {
