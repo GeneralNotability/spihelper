@@ -114,8 +114,16 @@ let spiHelperPageName = mw.config.get('wgPageName').replace(/_/g, ' ')
  */
 let spiHelperStartingRevID = mw.config.get('wgCurRevisionId')
 
+let spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
+
 /** @type {string} Just the username part of the case */
 let spiHelperCaseName
+
+if (spiHelperIsThisPageAnArchive) {
+  spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '').replace(/\/Archive/, '')
+} else {
+  spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+}
 
 /** list of section IDs + names corresponding to separate investigations */
 let spiHelperCaseSections = []
@@ -129,12 +137,11 @@ let spiHelperSectionName = null
 /** @type {ParsedArchiveNotice} */
 let spiHelperArchiveNoticeParams
 
-let spiHelperIsThisPageAnArchive
-
 /** Map of top-level actions the user has selected */
 const spiHelperActionsSelected = {
   Case_act: false,
   Block: false,
+  Links: false,
   Note: false,
   Close: false,
   Rename: false,
@@ -151,8 +158,10 @@ const spiHelperTags = []
 /** @type {string[]} Requested global locks */
 const spiHelperGlobalLocks = []
 
-// Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page)
-let spiHelperUserCount = 0
+// Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page) for the block view
+let spiHelperBlockTableUserCount = 0
+// Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page) for the link view (seperate needed as extra rows can be added)
+let spiHelperBlockTableUserCount = 0
 
 // The current wiki's interwiki prefix
 const spiHelperInterwikiPrefix = spiHelperGetInterwikiPrefix()
@@ -243,6 +252,16 @@ const spiHelperHiddenCharNormRegex = /\u200E/g
 /** @type{string} Advert to append to the edit summary of edits */
 const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
 
+/* Used by the link view */
+const spiHelper_linkViewURLFormats = {
+  'editorInteractionAnalyser': { baseurl: 'https://sigma.toolforge.org/editorinteract.py', userQueryStringKey: 'users', name: 'Editor Interaction Anaylser'},
+  'interactionTimeline': { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', name: 'Interaction Timeline'},
+  'timecardSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, userQueryStringKey: 'users', name: 'Timecard comparisons'},
+  'consolidatedTimelineSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, userQueryStringKey: 'users', name: 'Consolidated Timeline (requires login)'},
+  'pagesSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, userQueryStringKey: 'users', name: 'SPI Tools Pages (requires login)'},
+  'checkUserWikiSearch': { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', queryStringKey: 'search', userQueryStringSeparator: ' OR ', name: 'Checkuser wiki search'},
+}
+
 /* Actually put the portlets in place if needed */
 if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/') &&
   !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/')) {
@@ -270,6 +289,10 @@ const spiHelperTopViewHTML = `
       <input type="checkbox" name="spiHelper_BlockTag" id="spiHelper_BlockTag" />
       <label for="spiHelper_BlockTag">Block/tag socks</label>
     </li>
+    <li id="spiHelper_userInfoLine" class="spiHelper_singleCaseOnly">
+      <input type="checkbox" name="spiHelper_userInfo" id="spiHelper_userInfo" />
+      <label for="spiHelper_userInfo">Sock links</label>
+    </li>
     <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
       <label for="spiHelper_Comment">Note/comment</label>
@@ -296,12 +319,6 @@ const spiHelperTopViewHTML = `
  */
 async function spiHelperInit () {
   'use strict'
-  spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
-  if (spiHelperIsThisPageAnArchive) {
-    spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '').replace(/\/Archive/, '')
-  } else {
-    spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
-  }
   spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
 
   // Load archivenotice params
@@ -396,6 +413,30 @@ const spiHelperActionViewHTML = `
         <label for="spiHelper_spiMgmt_notalk">Socks should have talk page and email access revoked due to past abuse</label>
       </li>
     </ul>
+  </div>
+  <div id="spiHelper_sockLinksView">
+    <h4 id="spiHelper_sockLinksHeader">Useful links for socks</h4>
+    <table id="spiHelper_userInfoTable" style="border-collapse:collapse;">
+      <tr>
+        <th>Username</th>
+        <th><span title="Editor interaction analyser" class="rt-commentedText spihelper-hovertext">Interaction analyser</span></th>
+        <th><span title="Interaction timeline" class="rt-commentedText spihelper-hovertext">Interaction timeline</span></th>
+        <th><span title="Timecard comparison - SPI tools" class="rt-commentedText spihelper-hovertext">Timecard</span></th>
+        <th class="spiHelper_adminClass"><span title="Consolidated timeline (login needed) - SPI tools" class="rt-commentedText spihelper-hovertext">Consolidated timeline</span></th>
+        <th class="spiHelper_adminClass"><span title="Pages - SPI tools (login needed)" class="rt-commentedText spihelper-hovertext">Pages</span></th>
+        <th class="spiHelper_cuClass"><span title="CheckUser wiki search" class="rt-commentedText spihelper-hovertext">CU wiki</span></th>
+      </tr>
+      <tr style="border-bottom:2px solid black">
+        <td style="text-align:center;">(All users)</td>
+        <td><input type="checkbox" id="spiHelper_line_editorInteractionAnalyser"/></td>
+        <td><input type="checkbox" id="spiHelper_line_interactionTimeline"/></td>
+        <td><input type="checkbox" id="spiHelper_line_timecardSPItools"/></td>
+        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_line_consolidatedTimelineSPITools"/></td>
+        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_line_pagesSPITools"/></td>
+        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_line_checkUserWikiSearch"/></td>
+      </tr>
+    </table>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
   </div>
   <div id="spiHelper_blockTagView">
     <h4 id="spiHelper_blockTagHeader">Blocking and tagging socks</h4>
@@ -511,7 +552,8 @@ const spiHelperActionViewHTML = `
 // eslint-disable-next-line no-unused-vars
 async function spiHelperGenerateForm () {
   'use strict'
-  spiHelperUserCount = 0
+  spiHelperBlockTableUserCount = 0
+  spiHelperLinkTableUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
@@ -644,110 +686,6 @@ async function spiHelperGenerateForm () {
   if (!spiHelperActionsSelected.Archive) {
     $('#spiHelper_archiveView', $actionView).hide()
   }
-
-  if (spiHelperActionsSelected.Block) {
-    if (spiHelperIsAdmin()) {
-      $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
-    } else {
-      $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
-    }
-    // eslint-disable-next-line no-useless-escape
-    const checkuserRegex = /{{\s*check(?:user|ip)\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*(?:\|master name\s*=\s*.*)?}}/gi
-    const results = pagetext.match(checkuserRegex)
-    const likelyusers = []
-    const likelyips = []
-    const possibleusers = []
-    const possibleips = []
-    likelyusers.push(spiHelperCaseName)
-    if (results) {
-      for (let i = 0; i < results.length; i++) {
-        const username = spiHelperNormalizeUsername(results[i].replace(checkuserRegex, '$1'))
-        const isIP = mw.util.isIPAddress(username, true)
-        if (!isIP && !likelyusers.includes(username)) {
-          likelyusers.push(username)
-        } else if (isIP && !likelyips.includes(username)) {
-          likelyips.push(username)
-        }
-      }
-    }
-    // eslint-disable-next-line no-useless-escape
-    const userRegex = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
-    const userresults = pagetext.match(userRegex)
-    if (userresults) {
-      for (let i = 0; i < userresults.length; i++) {
-        const username = spiHelperNormalizeUsername(userresults[i].replace(userRegex, '$1'))
-        if (mw.util.isIPAddress(username, true) && !possibleips.includes(username) &&
-          !likelyips.includes(username)) {
-          possibleips.push(username)
-        } else if (!possibleusers.includes(username) &&
-          !likelyusers.includes(username)) {
-          possibleusers.push(username)
-        }
-      }
-    }
-    // Wire up the "select all" options
-    $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_acb', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_ab', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_tp', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_email', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    spiHelperGenerateSelect('spiHelper_block_tag', spiHelperTagOptions)
-    $('#spiHelper_block_tag', $actionView).on('change', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    spiHelperGenerateSelect('spiHelper_block_tag_altmaster', spiHelperAltMasterTagOptions)
-    $('#spiHelper_block_tag_altmaster', $actionView).on('change', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-
-    for (let i = 0; i < likelyusers.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperUserCount)
-    }
-    for (let i = 0; i < likelyips.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperUserCount)
-    }
-    for (let i = 0; i < possibleusers.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperUserCount)
-    }
-    for (let i = 0; i < possibleips.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperUserCount)
-    }
-  } else {
-    $('#spiHelper_blockTagView', $actionView).hide()
-  }
-  if (spiHelperActionsSelected.Rename) {
-    if (spiHelperSectionId) {
-      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
-    } else {
-      $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
-    }
-  } else {
-    $('#spiHelper_moveView', $actionView).hide()
-  }
-
   // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
   if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
     // generate the note prefixes
@@ -784,6 +722,150 @@ async function spiHelperGenerateForm () {
     })
   } else {
     $('#spiHelper_commentView', $actionView).hide()
+  }
+  if (spiHelperActionsSelected.Rename) {
+    if (spiHelperSectionId) {
+      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
+    } else {
+      $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
+    }
+  } else {
+    $('#spiHelper_moveView', $actionView).hide()
+  }
+  if (spiHelperActionsSelected.Block || spiHelperActionsSelected.Link) {
+    // eslint-disable-next-line no-useless-escape
+    const checkuserRegex = /{{\s*check(?:user|ip)\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*(?:\|master name\s*=\s*.*)?}}/gi
+    const results = pagetext.match(checkuserRegex)
+    const likelyusers = []
+    const likelyips = []
+    const possibleusers = []
+    const possibleips = []
+    likelyusers.push(spiHelperCaseName)
+    if (results) {
+      for (let i = 0; i < results.length; i++) {
+        const username = spiHelperNormalizeUsername(results[i].replace(checkuserRegex, '$1'))
+        const isIP = mw.util.isIPAddress(username, true)
+        if (!isIP && !likelyusers.includes(username)) {
+          likelyusers.push(username)
+        } else if (isIP && !likelyips.includes(username)) {
+          likelyips.push(username)
+        }
+      }
+    }
+    // eslint-disable-next-line no-useless-escape
+    const userRegex = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
+    const userresults = pagetext.match(userRegex)
+    if (userresults) {
+      for (let i = 0; i < userresults.length; i++) {
+        const username = spiHelperNormalizeUsername(userresults[i].replace(userRegex, '$1'))
+        if (mw.util.isIPAddress(username, true) && !possibleips.includes(username) &&
+          !likelyips.includes(username)) {
+          possibleips.push(username)
+        } else if (!possibleusers.includes(username) &&
+          !likelyusers.includes(username)) {
+          possibleusers.push(username)
+        }
+      }
+    }
+  }
+  if (spiHelperActionsSelected.Block) {
+    if (spiHelperIsAdmin()) {
+      $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
+    } else {
+      $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
+    }
+    // Wire up the "select all" options
+    $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_acb', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_ab', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_tp', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_email', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    spiHelperGenerateSelect('spiHelper_block_tag', spiHelperTagOptions)
+    $('#spiHelper_block_tag', $actionView).on('change', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    spiHelperGenerateSelect('spiHelper_block_tag_altmaster', spiHelperAltMasterTagOptions)
+    $('#spiHelper_block_tag_altmaster', $actionView).on('change', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'block')
+    })
+
+    for (let i = 0; i < likelyusers.length; i++) {
+      spiHelperBlockTableUserCount++
+      await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperBlockTableUserCount)
+    }
+    for (let i = 0; i < likelyips.length; i++) {
+      spiHelperBlockTableUserCount++
+      await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperBlockTableUserCount)
+    }
+    for (let i = 0; i < possibleusers.length; i++) {
+      spiHelperBlockTableUserCount++
+      await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperBlockTableUserCount)
+    }
+    for (let i = 0; i < possibleips.length; i++) {
+      spiHelperBlockTableUserCount++
+      await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperBlockTableUserCount)
+    }
+  } else {
+    $('#spiHelper_blockTagView', $actionView).hide()
+  }
+  if (spiHelperActionsSelected.Links) {
+    // Wire up the "select all" options
+    $('#spiHelper_editorInteractionAnalyser', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'link')
+    })
+    $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'link')
+    })
+    $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'link')
+    })
+    $('#spiHelper_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'link')
+    })
+    $('#spiHelper_pagesSPITools', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'link')
+    })
+    $('#spiHelper_checkUserWikiSearch', $actionView).on('click', function (e) {
+      spiHelperSetAllTableColumnOpts($(e.target), 'link')
+    })
+
+    for (let i = 0; i < likelyusers.length; i++) {
+      spiHelperLinkTableUserCount++
+      await spiHelperGenerateLinksTableLine(likelyusers[i], spiHelperLinkTableUserCount)
+    }
+    for (let i = 0; i < likelyips.length; i++) {
+      spiHelperLinkTableUserCount++
+      await spiHelperGenerateLinksTableLine(likelyips[i], spiHelperLinkTableUserCount)
+    }
+    for (let i = 0; i < possibleusers.length; i++) {
+      spiHelperLinkTableUserCount++
+      await spiHelperGenerateLinksTableLine(possibleusers[i], spiHelperLinkTableUserCount)
+    }
+    for (let i = 0; i < possibleips.length; i++) {
+      spiHelperLinkTableUserCount++
+      await spiHelperGenerateLinksTableLine(possibleips[i], spiHelperLinkTableUserCount)
+    }
+  } else {
+    $('#spiHelper_sockLinksView', $actionView).hide()
   }
   // Wire up the submit button
   $('#spiHelper_performActions', $actionView).one('click', () => {
@@ -881,7 +963,7 @@ async function spiHelperPerformActions () {
     if (spiHelperIsAdmin() && !$('#spiHelper_noblock', $actionView).prop('checked')) {
       const masterNotice = $('#spiHelper_blocknoticemaster', $actionView).prop('checked')
       const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked')
-      for (let i = 1; i <= spiHelperUserCount; i++) {
+      for (let i = 1; i <= spiHelperBlockTableUserCount; i++) {
         if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
           if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
             // Skip blank usernames, empty string is falsey
@@ -928,7 +1010,7 @@ async function spiHelperPerformActions () {
         }
       }
     } else {
-      for (let i = 1; i <= spiHelperUserCount; i++) {
+      for (let i = 1; i <= spiHelperBlockTableUserCount; i++) {
         if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
           // Skip blank entries
           continue
@@ -971,6 +1053,39 @@ async function spiHelperPerformActions () {
     logMessage += ' (full case)'
   }
   logMessage += ' ~~~~~'
+ 
+  if (spiHelperActionsSelected.Line) {
+    const spiHelper_usersForLinks = {
+      'editorInteractionAnalyser': [],
+      'interactionTimeline': [],
+      'timecardSPITools': [],
+      'consolidatedTimelineSPITools': [],
+      'pagesSPITools': [],
+      'checkUserWikiSearch': []
+    }
+    for (let i = 1; i <= spiHelperLinkTableUserCount; i++) {
+      const username = $('#spiHelper_line_username' + i, $actionView).val().toString()
+      if (!username) {
+        // Skip blank usernames
+        continue
+      }
+      if ($('#spiHelper_line_editorInteractionAnalyser' + i, $actionView).prop('checked')) spiHelper_usersForLinks.editorInteractionAnalyser.push(username)
+      if ($('#spiHelper_line_interactionTimeline' + i, $actionView).prop('checked')) spiHelper_usersForLinks.interactionTimeline.push(username)
+      if ($('#spiHelper_line_timecardSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.timecardSPITools.push(username)
+      if ($('#spiHelper_line_consolidatedTimelineSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.consolidatedTimelineSPITools.push(username)
+      if ($('#spiHelper_line_pagesSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.pagesSPITools.push(username)
+      if ($('#spiHelper_line_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
+    }
+    
+    for (let link in spiHelper_usersForLinks) {
+      if (spiHelper_usersForLinks[link].length === 0) return
+      for (let username in spiHelper_usersForLinks[link]) {
+        
+      }
+      const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+      $statusLine.html('<b>Block failed on ' + blockEntry.username + ', not adding talk page notice</b>')
+    }
+  }
 
   if (spiHelperSectionId !== null && !spiHelperIsThisPageAnArchive) {
     let caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
@@ -2839,6 +2954,36 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   spiHelperGenerateSelect('spiHelper_block_tag_altmaster' + id, spiHelperAltMasterTagOptions)
 }
 
+async function spiHelperGenerateLinksTableLine (username, id) {
+  'use strict'
+
+  const $table = $('#spiHelper_blockTable', document)
+
+  const $row = $('<tr>')
+  // Username
+  $('<td>').append($('<input>').attr('type', 'text').attr('id', 'spiHelper_link_username' + id)
+    .val(name).addClass('.spihelper-widthlimit')).appendTo($row)
+  // Editor interaction analyser
+  $('<td>').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_editorInteractionAnalyser' + id).appendTo($row)
+  // Interaction timeline
+  $('<td>').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_interactionTimeline' + id).appendTo($row)
+  // SPI tools timecard tool
+  $('<td>').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_timecardSPItools' + id).appendTo($row)
+  // SPI tools consilidated timeline (admin only based on OAUTH requirements)
+  $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id).appendTo($row)
+  // SPI tools pages tool (admin only based on OAUTH requirements)
+  $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_pagesSPITools' + id).prop('checked', ntp)).appendTo($row)
+  // Checkuser wiki search (CU only)
+  $('<td>').addClass('spiHelper_cuClass').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_checkUserWikiSearch' + id).appendTo($row)
+  $table.append($row)
+}
+
 /**
  * Complicated function to decide what checkboxes to enable or disable
  * and which to check by default
@@ -2998,9 +3143,9 @@ function spiHelperGenerateSelect (id, options) {
  *
  * @param {JQuery<HTMLElement>} source The HTML input element that we're matching all selections to
  */
-function spiHelperSetAllBlockOpts (source) {
+function spiHelperSetAllTableColumnOpts (source, forTable) {
   'use strict'
-  for (let i = 1; i <= spiHelperUserCount; i++) {
+  for (let i = 1; i <= (forTable === 'links' ? spiHelperLinkTableUserCount : spiHelperBlockTableUserCount); i++) {
     const $target = $('#' + source.attr('id') + i)
     if (source.attr('type') === 'checkbox') {
       // Don't try to set disabled checkboxes
@@ -3344,7 +3489,12 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
  */
 // eslint-disable-next-line no-unused-vars
 async function spiHelperAddBlankUserLine () {
-  spiHelperUserCount++
-  await spiHelperGenerateBlockTableLine('', true, spiHelperUserCount)
+  if (spiHelperActionsSelected.Block) {
+    spiHelperBlockTableUserCount++
+    await spiHelperGenerateBlockTableLine('', true, spiHelperBlockTableUserCount)
+  } else {
+    spiHelperLinkTableUserCount++
+    await spiHelperGenerateLinksTableLine('', spiHelperLinkTableUserCount)
+  }
   updateForRole()
 }
