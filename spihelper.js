@@ -161,7 +161,7 @@ const spiHelperGlobalLocks = []
 // Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page) for the block view
 let spiHelperBlockTableUserCount = 0
 // Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page) for the link view (seperate needed as extra rows can be added)
-let spiHelperBlockTableUserCount = 0
+let spiHelperLinkTableUserCount = 0
 
 // The current wiki's interwiki prefix
 const spiHelperInterwikiPrefix = spiHelperGetInterwikiPrefix()
@@ -428,12 +428,12 @@ const spiHelperActionViewHTML = `
       </tr>
       <tr style="border-bottom:2px solid black">
         <td style="text-align:center;">(All users)</td>
-        <td><input type="checkbox" id="spiHelper_line_editorInteractionAnalyser"/></td>
-        <td><input type="checkbox" id="spiHelper_line_interactionTimeline"/></td>
-        <td><input type="checkbox" id="spiHelper_line_timecardSPItools"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_line_consolidatedTimelineSPITools"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_line_pagesSPITools"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_line_checkUserWikiSearch"/></td>
+        <td><input type="checkbox" id="spiHelper_link_editorInteractionAnalyser"/></td>
+        <td><input type="checkbox" id="spiHelper_link_interactionTimeline"/></td>
+        <td><input type="checkbox" id="spiHelper_link_timecardSPItools"/></td>
+        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_consolidatedTimelineSPITools"/></td>
+        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_pagesSPITools"/></td>
+        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
       </tr>
     </table>
     <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
@@ -557,6 +557,7 @@ async function spiHelperGenerateForm () {
   const $topView = $('#spiHelper_topViewDiv', document)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
+  spiHelperActionsSelected.Link = $('#spiHelper_userInfo', $topView).prop('checked')
   spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
   spiHelperActionsSelected.Close = $('#spiHelper_Close', $topView).prop('checked')
   spiHelperActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked')
@@ -565,7 +566,7 @@ async function spiHelperGenerateForm () {
   const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
   if (!(spiHelperActionsSelected.Case_act ||
     spiHelperActionsSelected.Note || spiHelperActionsSelected.Close ||
-    spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block ||
+    spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block || spiHelperActionsSelected.Link ||
     spiHelperActionsSelected.Rename || spiHelperActionsSelected.SpiMgmt)) {
     displayMessage('')
     return
@@ -767,105 +768,105 @@ async function spiHelperGenerateForm () {
         }
       }
     }
-  }
-  if (spiHelperActionsSelected.Block) {
-    if (spiHelperIsAdmin()) {
-      $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
+    if (spiHelperActionsSelected.Block) {
+      if (spiHelperIsAdmin()) {
+        $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
+      } else {
+        $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
+      }
+      // Wire up the "select all" options
+      $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_acb', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_ab', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_tp', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_email', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      spiHelperGenerateSelect('spiHelper_block_tag', spiHelperTagOptions)
+      $('#spiHelper_block_tag', $actionView).on('change', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      spiHelperGenerateSelect('spiHelper_block_tag_altmaster', spiHelperAltMasterTagOptions)
+      $('#spiHelper_block_tag_altmaster', $actionView).on('change', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+
+      for (let i = 0; i < likelyusers.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperBlockTableUserCount)
+      }
+      for (let i = 0; i < likelyips.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperBlockTableUserCount)
+      }
+      for (let i = 0; i < possibleusers.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperBlockTableUserCount)
+      }
+      for (let i = 0; i < possibleips.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperBlockTableUserCount)
+      }
     } else {
-      $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
+      $('#spiHelper_blockTagView', $actionView).hide()
     }
-    // Wire up the "select all" options
-    $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_acb', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_ab', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_tp', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_email', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    spiHelperGenerateSelect('spiHelper_block_tag', spiHelperTagOptions)
-    $('#spiHelper_block_tag', $actionView).on('change', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    spiHelperGenerateSelect('spiHelper_block_tag_altmaster', spiHelperAltMasterTagOptions)
-    $('#spiHelper_block_tag_altmaster', $actionView).on('change', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'block')
-    })
+    if (spiHelperActionsSelected.Link) {
+      // Wire up the "select all" options
+      $('#spiHelper_editorInteractionAnalyser', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_pagesSPITools', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_checkUserWikiSearch', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
 
-    for (let i = 0; i < likelyusers.length; i++) {
-      spiHelperBlockTableUserCount++
-      await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperBlockTableUserCount)
+      for (let i = 0; i < likelyusers.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(likelyusers[i], spiHelperLinkTableUserCount)
+      }
+      for (let i = 0; i < likelyips.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(likelyips[i], spiHelperLinkTableUserCount)
+      }
+      for (let i = 0; i < possibleusers.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(possibleusers[i], spiHelperLinkTableUserCount)
+      }
+      for (let i = 0; i < possibleips.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(possibleips[i], spiHelperLinkTableUserCount)
+      }
+    } else {
+      $('#spiHelper_sockLinksView', $actionView).hide()
     }
-    for (let i = 0; i < likelyips.length; i++) {
-      spiHelperBlockTableUserCount++
-      await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperBlockTableUserCount)
-    }
-    for (let i = 0; i < possibleusers.length; i++) {
-      spiHelperBlockTableUserCount++
-      await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperBlockTableUserCount)
-    }
-    for (let i = 0; i < possibleips.length; i++) {
-      spiHelperBlockTableUserCount++
-      await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperBlockTableUserCount)
-    }
-  } else {
-    $('#spiHelper_blockTagView', $actionView).hide()
-  }
-  if (spiHelperActionsSelected.Links) {
-    // Wire up the "select all" options
-    $('#spiHelper_editorInteractionAnalyser', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'link')
-    })
-    $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'link')
-    })
-    $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'link')
-    })
-    $('#spiHelper_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'link')
-    })
-    $('#spiHelper_pagesSPITools', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'link')
-    })
-    $('#spiHelper_checkUserWikiSearch', $actionView).on('click', function (e) {
-      spiHelperSetAllTableColumnOpts($(e.target), 'link')
-    })
-
-    for (let i = 0; i < likelyusers.length; i++) {
-      spiHelperLinkTableUserCount++
-      await spiHelperGenerateLinksTableLine(likelyusers[i], spiHelperLinkTableUserCount)
-    }
-    for (let i = 0; i < likelyips.length; i++) {
-      spiHelperLinkTableUserCount++
-      await spiHelperGenerateLinksTableLine(likelyips[i], spiHelperLinkTableUserCount)
-    }
-    for (let i = 0; i < possibleusers.length; i++) {
-      spiHelperLinkTableUserCount++
-      await spiHelperGenerateLinksTableLine(possibleusers[i], spiHelperLinkTableUserCount)
-    }
-    for (let i = 0; i < possibleips.length; i++) {
-      spiHelperLinkTableUserCount++
-      await spiHelperGenerateLinksTableLine(possibleips[i], spiHelperLinkTableUserCount)
-    }
-  } else {
-    $('#spiHelper_sockLinksView', $actionView).hide()
   }
   // Wire up the submit button
   $('#spiHelper_performActions', $actionView).one('click', () => {
@@ -1054,7 +1055,7 @@ async function spiHelperPerformActions () {
   }
   logMessage += ' ~~~~~'
  
-  if (spiHelperActionsSelected.Line) {
+  if (spiHelperActionsSelected.Link) {
     const spiHelper_usersForLinks = {
       'editorInteractionAnalyser': [],
       'interactionTimeline': [],
@@ -1064,17 +1065,17 @@ async function spiHelperPerformActions () {
       'checkUserWikiSearch': []
     }
     for (let i = 1; i <= spiHelperLinkTableUserCount; i++) {
-      const username = $('#spiHelper_line_username' + i, $actionView).val().toString()
+      const username = $('#spiHelper_link_username' + i, $actionView).val().toString()
       if (!username) {
         // Skip blank usernames
         continue
       }
-      if ($('#spiHelper_line_editorInteractionAnalyser' + i, $actionView).prop('checked')) spiHelper_usersForLinks.editorInteractionAnalyser.push(username)
-      if ($('#spiHelper_line_interactionTimeline' + i, $actionView).prop('checked')) spiHelper_usersForLinks.interactionTimeline.push(username)
-      if ($('#spiHelper_line_timecardSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.timecardSPITools.push(username)
-      if ($('#spiHelper_line_consolidatedTimelineSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.consolidatedTimelineSPITools.push(username)
-      if ($('#spiHelper_line_pagesSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.pagesSPITools.push(username)
-      if ($('#spiHelper_line_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
+      if ($('#spiHelper_link_editorInteractionAnalyser' + i, $actionView).prop('checked')) spiHelper_usersForLinks.editorInteractionAnalyser.push(username)
+      if ($('#spiHelper_link_interactionTimeline' + i, $actionView).prop('checked')) spiHelper_usersForLinks.interactionTimeline.push(username)
+      if ($('#spiHelper_link_timecardSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.timecardSPITools.push(username)
+      if ($('#spiHelper_link_consolidatedTimelineSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.consolidatedTimelineSPITools.push(username)
+      if ($('#spiHelper_link_pagesSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.pagesSPITools.push(username)
+      if ($('#spiHelper_link_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
     }
     
     const $linkViewList = $('<ul>').appendTo($('#spiHelper_status', document))
@@ -1083,6 +1084,7 @@ async function spiHelperPerformActions () {
       const URLentry = spiHelper_linkViewURLFormats[link]
       let generatedURL = URLentry.baseurl + '?' + (URLentry.multipleUserQueryStringKeys ? '' : URLentry.userQueryStringKey + "=")
       for (let i = 0; i < spiHelper_usersForLinks[link].length; i++) {
+        const username = spiHelper_usersForLinks[link][i]
         generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
         if (URLentry.multipleUserQueryStringKeys) {
           generatedURL += URLentry.userQueryStringKey + "=" + username
@@ -2966,30 +2968,30 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
 async function spiHelperGenerateLinksTableLine (username, id) {
   'use strict'
 
-  const $table = $('#spiHelper_blockTable', document)
+  const $table = $('#spiHelper_userInfoTable', document)
 
   const $row = $('<tr>')
   // Username
   $('<td>').append($('<input>').attr('type', 'text').attr('id', 'spiHelper_link_username' + id)
-    .val(name).addClass('.spihelper-widthlimit')).appendTo($row)
+    .val(username).addClass('.spihelper-widthlimit')).appendTo($row)
   // Editor interaction analyser
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_editorInteractionAnalyser' + id).appendTo($row)
+    .attr('id', 'spiHelper_link_editorInteractionAnalyser' + id)).appendTo($row)
   // Interaction timeline
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_interactionTimeline' + id).appendTo($row)
+    .attr('id', 'spiHelper_link_interactionTimeline' + id)).appendTo($row)
   // SPI tools timecard tool
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_timecardSPItools' + id).appendTo($row)
+    .attr('id', 'spiHelper_link_timecardSPItools' + id)).appendTo($row)
   // SPI tools consilidated timeline (admin only based on OAUTH requirements)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id).appendTo($row)
+    .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id)).appendTo($row)
   // SPI tools pages tool (admin only based on OAUTH requirements)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_pagesSPITools' + id).prop('checked', ntp)).appendTo($row)
+    .attr('id', 'spiHelper_link_pagesSPITools' + id)).appendTo($row)
   // Checkuser wiki search (CU only)
   $('<td>').addClass('spiHelper_cuClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_checkUserWikiSearch' + id).appendTo($row)
+    .attr('id', 'spiHelper_link_checkUserWikiSearch' + id)).appendTo($row)
   $table.append($row)
 }
 
