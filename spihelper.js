@@ -114,7 +114,7 @@ let spiHelperPageName = mw.config.get('wgPageName').replace(/_/g, ' ')
  */
 let spiHelperStartingRevID = mw.config.get('wgCurRevisionId')
 
-let spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
+const spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
 
 /** @type {string} Just the username part of the case */
 let spiHelperCaseName
@@ -253,13 +253,13 @@ const spiHelperHiddenCharNormRegex = /\u200E/g
 const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
 
 /* Used by the link view */
-const spiHelper_linkViewURLFormats = {
-  'editorInteractionAnalyser': { baseurl: 'https://sigma.toolforge.org/editorinteract.py', appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Editor Interaction Anaylser'},
-  'interactionTimeline': { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Interaction Timeline'},
-  'timecardSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Timecard comparisons'},
-  'consolidatedTimelineSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Consolidated Timeline (requires login)'},
-  'pagesSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'SPI Tools Pages (requires login)'},
-  'checkUserWikiSearch': { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', userQueryStringKey: 'search', userQueryStringSeparator: ' OR ', userQueryStringWrapper: '"', multipleUserQueryStringKeys: false, name: 'Checkuser wiki search'},
+const spiHelperLinkViewURLFormats = {
+  editorInteractionAnalyser: { baseurl: 'https://sigma.toolforge.org/editorinteract.py', appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Editor Interaction Anaylser' },
+  interactionTimeline: { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Interaction Timeline' },
+  timecardSPITools: { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Timecard comparisons' },
+  consolidatedTimelineSPITools: { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Consolidated Timeline (requires login)' },
+  pagesSPITools: { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'SPI Tools Pages (requires login)' },
+  checkUserWikiSearch: { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', userQueryStringKey: 'search', userQueryStringSeparator: ' OR ', userQueryStringWrapper: '"', multipleUserQueryStringKeys: false, name: 'Checkuser wiki search' }
 }
 
 /* Actually put the portlets in place if needed */
@@ -1057,13 +1057,13 @@ async function spiHelperPerformActions () {
  
   if (spiHelperActionsSelected.Link) {
     $('#linkViewResults', document).show()
-    const spiHelper_usersForLinks = {
-      'editorInteractionAnalyser': [],
-      'interactionTimeline': [],
-      'timecardSPITools': [],
-      'consolidatedTimelineSPITools': [],
-      'pagesSPITools': [],
-      'checkUserWikiSearch': []
+    const spiHelperUsersForLinks = {
+      editorInteractionAnalyser: [],
+      interactionTimeline: [],
+      timecardSPITools: [],
+      consolidatedTimelineSPITools: [],
+      pagesSPITools: [],
+      checkUserWikiSearch: []
     }
     for (let i = 1; i <= spiHelperLinkTableUserCount; i++) {
       const username = $('#spiHelper_link_username' + i, $actionView).val().toString()
@@ -1071,22 +1071,21 @@ async function spiHelperPerformActions () {
         // Skip blank usernames
         continue
       }
-      if ($('#spiHelper_link_editorInteractionAnalyser' + i, $actionView).prop('checked')) spiHelper_usersForLinks.editorInteractionAnalyser.push(username)
-      if ($('#spiHelper_link_interactionTimeline' + i, $actionView).prop('checked')) spiHelper_usersForLinks.interactionTimeline.push(username)
-      if ($('#spiHelper_link_timecardSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.timecardSPITools.push(username)
-      if ($('#spiHelper_link_consolidatedTimelineSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.consolidatedTimelineSPITools.push(username)
-      if ($('#spiHelper_link_pagesSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.pagesSPITools.push(username)
-      if ($('#spiHelper_link_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
+      if ($('#spiHelper_link_editorInteractionAnalyser' + i, $actionView).prop('checked')) spiHelperUsersForLinks.editorInteractionAnalyser.push(username)
+      if ($('#spiHelper_link_interactionTimeline' + i, $actionView).prop('checked')) spiHelperUsersForLinks.interactionTimeline.push(username)
+      if ($('#spiHelper_link_timecardSPITools' + i, $actionView).prop('checked')) spiHelperUsersForLinks.timecardSPITools.push(username)
+      if ($('#spiHelper_link_consolidatedTimelineSPITools' + i, $actionView).prop('checked')) spiHelperUsersForLinks.consolidatedTimelineSPITools.push(username)
+      if ($('#spiHelper_link_pagesSPITools' + i, $actionView).prop('checked')) spiHelperUsersForLinks.pagesSPITools.push(username)
+      if ($('#spiHelper_link_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelperUsersForLinks.checkUserWikiSearch.push(username)
     }
 
-
-    const $linkViewList = $('#linkViewResultsList')
-    for (let link in spiHelper_usersForLinks) {
-      if (spiHelper_usersForLinks[link].length === 0) continue
-      const URLentry = spiHelper_linkViewURLFormats[link]
-      let generatedURL = URLentry.baseurl + '?' + (URLentry.multipleUserQueryStringKeys ? '' : URLentry.userQueryStringKey + "=")
-      for (let i = 0; i < spiHelper_usersForLinks[link].length; i++) {
-        const username = spiHelper_usersForLinks[link][i]
+    const $linkViewList = $('#linkViewResultsList', document)
+    for (const link in spiHelperUsersForLinks) {
+      if (spiHelperUsersForLinks[link].length === 0) continue
+      const URLentry = spiHelperLinkViewURLFormats[link]
+      let generatedURL = URLentry.baseurl + '?' + (URLentry.multipleUserQueryStringKeys ? '' : URLentry.userQueryStringKey + '=')
+      for (let i = 0; i < spiHelperUsersForLinks[link].length; i++) {
+        const username = spiHelperUsersForLinks[link][i]
         generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
         if (URLentry.multipleUserQueryStringKeys) {
           generatedURL += URLentry.userQueryStringKey + "=" + URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
@@ -1094,10 +1093,10 @@ async function spiHelperPerformActions () {
           generatedURL += URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
         }
       }
-      generatedURL += (URLentry.appendToQueryString === '' ? '': "&") + URLentry.appendToQueryString
+      generatedURL += (URLentry.appendToQueryString === '' ? '' : '&') + URLentry.appendToQueryString
       const $statusLine = $('<li>').appendTo($linkViewList)
       const $statusLineLink = $('<a>').appendTo($statusLine)
-      $statusLineLink.attr('href', generatedURL).attr('target', '_blank').attr('rel', 'noopener noreferrer').text(spiHelper_linkViewURLFormats[link].name)
+      $statusLineLink.attr('href', generatedURL).attr('target', '_blank').attr('rel', 'noopener noreferrer').text(spiHelperLinkViewURLFormats[link].name)
     }
   }
 
