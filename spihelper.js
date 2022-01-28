@@ -428,12 +428,12 @@ const spiHelperActionViewHTML = `
       </tr>
       <tr style="border-bottom:2px solid black">
         <td style="text-align:center;">(All users)</td>
-        <td><input type="checkbox" id="spiHelper_link_editorInteractionAnalyser"/></td>
-        <td><input type="checkbox" id="spiHelper_link_interactionTimeline"/></td>
-        <td><input type="checkbox" id="spiHelper_link_timecardSPITools"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_consolidatedTimelineSPITools"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_pagesSPITools"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
+        <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_editorInteractionAnalyser"/></td>
+        <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_interactionTimeline"/></td>
+        <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_timecardSPITools"/></td>
+        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_consolidatedTimelineSPITools"/></td>
+        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_pagesSPITools"/></td>
+        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
       </tr>
     </table>
     <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
@@ -2978,22 +2978,22 @@ async function spiHelperGenerateLinksTableLine (username, id) {
     .val(username).addClass('.spihelper-widthlimit')).appendTo($row)
   // Editor interaction analyser
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_editorInteractionAnalyser' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_editorInteractionAnalyser' + id)).attr('style', 'text-align:center;').appendTo($row)
   // Interaction timeline
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_interactionTimeline' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_interactionTimeline' + id)).attr('style', 'text-align:center;').appendTo($row)
   // SPI tools timecard tool
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_timecardSPITools' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_timecardSPITools' + id)).attr('style', 'text-align:center;').appendTo($row)
   // SPI tools consilidated timeline (admin only based on OAUTH requirements)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id)).attr('style', 'text-align:center;').appendTo($row)
   // SPI tools pages tool (admin only based on OAUTH requirements)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_pagesSPITools' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_pagesSPITools' + id)).attr('style', 'text-align:center;').appendTo($row)
   // Checkuser wiki search (CU only)
   $('<td>').addClass('spiHelper_cuClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_checkUserWikiSearch' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_checkUserWikiSearch' + id)).attr('style', 'text-align:center;').appendTo($row)
   $table.append($row)
 }
 
