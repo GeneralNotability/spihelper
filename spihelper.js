@@ -254,12 +254,12 @@ const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihel
 
 /* Used by the link view */
 const spiHelper_linkViewURLFormats = {
-  'editorInteractionAnalyser': { baseurl: 'https://sigma.toolforge.org/editorinteract.py', userQueryStringKey: 'users', name: 'Editor Interaction Anaylser'},
-  'interactionTimeline': { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', name: 'Interaction Timeline'},
-  'timecardSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, userQueryStringKey: 'users', name: 'Timecard comparisons'},
-  'consolidatedTimelineSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, userQueryStringKey: 'users', name: 'Consolidated Timeline (requires login)'},
-  'pagesSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, userQueryStringKey: 'users', name: 'SPI Tools Pages (requires login)'},
-  'checkUserWikiSearch': { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', queryStringKey: 'search', userQueryStringSeparator: ' OR ', name: 'Checkuser wiki search'},
+  'editorInteractionAnalyser': { baseurl: 'https://sigma.toolforge.org/editorinteract.py', appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Editor Interaction Anaylser'},
+  'interactionTimeline': { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Interaction Timeline'},
+  'timecardSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Timecard comparisons'},
+  'consolidatedTimelineSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Consolidated Timeline (requires login)'},
+  'pagesSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'SPI Tools Pages (requires login)'},
+  'checkUserWikiSearch': { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', userQueryStringKey: 'search', userQueryStringSeparator: ' OR ', multipleUserQueryStringKeys: false, name: 'Checkuser wiki search'},
 }
 
 /* Actually put the portlets in place if needed */
@@ -1077,13 +1077,22 @@ async function spiHelperPerformActions () {
       if ($('#spiHelper_line_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
     }
     
+    const $linkViewList = $('<ul>').appendTo($('#spiHelper_status', document))
     for (let link in spiHelper_usersForLinks) {
       if (spiHelper_usersForLinks[link].length === 0) return
-      for (let username in spiHelper_usersForLinks[link]) {
-        
+      const URLentry = spiHelper_linkViewURLFormats[link]
+      let generatedURL = URLentry.baseurl + '?' + (URLentry.multipleUserQueryStringKeys ? '' : URLentry.userQueryStringKey + "=")
+      for (let i = 0; i < spiHelper_usersForLinks[link].length; i++) {
+        generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
+        if (URLentry.multipleUserQueryStringKeys) {
+          generatedURL += URLentry.userQueryStringKey + "=" + username
+        } else {
+          generatedURL += username
+        }
       }
-      const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-      $statusLine.html('<b>Block failed on ' + blockEntry.username + ', not adding talk page notice</b>')
+      generatedURL += URLentry.appendToQueryString
+      const $statusLine = $('<li>').appendTo($linkViewList)
+      $statusLine.append($('a').attr('href', generatedURL).attr('target', '_blank').attr('rel', 'noopener noreferrer').text(spiHelper_linkViewURLFormats[link].name))
     }
   }
 
