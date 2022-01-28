@@ -254,12 +254,12 @@ const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihel
 
 /* Used by the link view */
 const spiHelper_linkViewURLFormats = {
-  'editorInteractionAnalyser': { baseurl: 'https://sigma.toolforge.org/editorinteract.py', appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Editor Interaction Anaylser'},
-  'interactionTimeline': { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Interaction Timeline'},
-  'timecardSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Timecard comparisons'},
-  'consolidatedTimelineSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'Consolidated Timeline (requires login)'},
-  'pagesSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', multipleUserQueryStringKeys: true, name: 'SPI Tools Pages (requires login)'},
-  'checkUserWikiSearch': { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', userQueryStringKey: 'search', userQueryStringSeparator: ' OR ', multipleUserQueryStringKeys: false, name: 'Checkuser wiki search'},
+  'editorInteractionAnalyser': { baseurl: 'https://sigma.toolforge.org/editorinteract.py', appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Editor Interaction Anaylser'},
+  'interactionTimeline': { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Interaction Timeline'},
+  'timecardSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Timecard comparisons'},
+  'consolidatedTimelineSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Consolidated Timeline (requires login)'},
+  'pagesSPITools': { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'SPI Tools Pages (requires login)'},
+  'checkUserWikiSearch': { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', userQueryStringKey: 'search', userQueryStringSeparator: ' OR ', userQueryStringWrapper: '"', multipleUserQueryStringKeys: false, name: 'Checkuser wiki search'},
 }
 
 /* Actually put the portlets in place if needed */
@@ -430,7 +430,7 @@ const spiHelperActionViewHTML = `
         <td style="text-align:center;">(All users)</td>
         <td><input type="checkbox" id="spiHelper_link_editorInteractionAnalyser"/></td>
         <td><input type="checkbox" id="spiHelper_link_interactionTimeline"/></td>
-        <td><input type="checkbox" id="spiHelper_link_timecardSPItools"/></td>
+        <td><input type="checkbox" id="spiHelper_link_timecardSPITools"/></td>
         <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_consolidatedTimelineSPITools"/></td>
         <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_pagesSPITools"/></td>
         <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
@@ -829,22 +829,22 @@ async function spiHelperGenerateForm () {
     }
     if (spiHelperActionsSelected.Link) {
       // Wire up the "select all" options
-      $('#spiHelper_editorInteractionAnalyser', $actionView).on('click', function (e) {
+      $('#spiHelper_link_editorInteractionAnalyser', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
-      $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
+      $('#spiHelper_link_interactionTimeline', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
-      $('#spiHelper_interactionTimeline', $actionView).on('click', function (e) {
+      $('#spiHelper_link_interactionTimeline', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
-      $('#spiHelper_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
+      $('#spiHelper_link_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
-      $('#spiHelper_pagesSPITools', $actionView).on('click', function (e) {
+      $('#spiHelper_link_pagesSPITools', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
-      $('#spiHelper_checkUserWikiSearch', $actionView).on('click', function (e) {
+      $('#spiHelper_link_checkUserWikiSearch', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
 
@@ -1078,23 +1078,26 @@ async function spiHelperPerformActions () {
       if ($('#spiHelper_link_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
     }
     
+    const $headerLinkViewList = $('<p>').appendTo($('#spiHelper_status', document))
+    $headerLinkViewList.text('Generated links')
     const $linkViewList = $('<ul>').appendTo($('#spiHelper_status', document))
     for (let link in spiHelper_usersForLinks) {
-      if (spiHelper_usersForLinks[link].length === 0) return
+      if (spiHelper_usersForLinks[link].length === 0) continue
       const URLentry = spiHelper_linkViewURLFormats[link]
       let generatedURL = URLentry.baseurl + '?' + (URLentry.multipleUserQueryStringKeys ? '' : URLentry.userQueryStringKey + "=")
       for (let i = 0; i < spiHelper_usersForLinks[link].length; i++) {
         const username = spiHelper_usersForLinks[link][i]
         generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
         if (URLentry.multipleUserQueryStringKeys) {
-          generatedURL += URLentry.userQueryStringKey + "=" + username
+          generatedURL += URLentry.userQueryStringKey + "=" + URLentry.userQueryStringWrapper + username + URLentry.userQueryStringWrapper
         } else {
-          generatedURL += username
+          generatedURL += URLentry.userQueryStringWrapper + username + URLentry.userQueryStringWrapper
         }
       }
-      generatedURL += URLentry.appendToQueryString
+      generatedURL += (URLentry.appendToQueryString === '' ? '': "&") + URLentry.appendToQueryString
       const $statusLine = $('<li>').appendTo($linkViewList)
-      $statusLine.append($('a').attr('href', generatedURL).attr('target', '_blank').attr('rel', 'noopener noreferrer').text(spiHelper_linkViewURLFormats[link].name))
+      const $statusLineLink = $('<a>').appendTo($statusLine)
+      $statusLineLink.attr('href', generatedURL).attr('target', '_blank').attr('rel', 'noopener noreferrer').text(spiHelper_linkViewURLFormats[link].name)
     }
   }
 
@@ -2982,7 +2985,7 @@ async function spiHelperGenerateLinksTableLine (username, id) {
     .attr('id', 'spiHelper_link_interactionTimeline' + id)).appendTo($row)
   // SPI tools timecard tool
   $('<td>').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_link_timecardSPItools' + id)).appendTo($row)
+    .attr('id', 'spiHelper_link_timecardSPITools' + id)).appendTo($row)
   // SPI tools consilidated timeline (admin only based on OAUTH requirements)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
     .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id)).appendTo($row)
@@ -3156,7 +3159,7 @@ function spiHelperGenerateSelect (id, options) {
  */
 function spiHelperSetAllTableColumnOpts (source, forTable) {
   'use strict'
-  for (let i = 1; i <= (forTable === 'links' ? spiHelperLinkTableUserCount : spiHelperBlockTableUserCount); i++) {
+  for (let i = 1; i <= (forTable === 'link' ? spiHelperLinkTableUserCount : spiHelperBlockTableUserCount); i++) {
     const $target = $('#' + source.attr('id') + i)
     if (source.attr('type') === 'checkbox') {
       // Don't try to set disabled checkboxes
