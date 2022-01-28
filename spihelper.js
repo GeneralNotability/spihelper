@@ -1054,7 +1054,7 @@ async function spiHelperPerformActions () {
     logMessage += ' (full case)'
   }
   logMessage += ' ~~~~~'
- 
+
   if (spiHelperActionsSelected.Link) {
     $('#linkViewResults', document).show()
     const spiHelperUsersForLinks = {
@@ -1088,7 +1088,7 @@ async function spiHelperPerformActions () {
         const username = spiHelperUsersForLinks[link][i]
         generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
         if (URLentry.multipleUserQueryStringKeys) {
-          generatedURL += URLentry.userQueryStringKey + "=" + URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
+          generatedURL += URLentry.userQueryStringKey + '=' + URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
         } else {
           generatedURL += URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
         }
