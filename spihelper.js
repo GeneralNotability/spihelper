@@ -835,7 +835,7 @@ async function spiHelperGenerateForm () {
       $('#spiHelper_link_interactionTimeline', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
-      $('#spiHelper_link_interactionTimeline', $actionView).on('click', function (e) {
+      $('#spiHelper_link_timecardSPITools', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'link')
       })
       $('#spiHelper_link_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
@@ -1041,7 +1041,7 @@ async function spiHelperPerformActions () {
     spiHelperActionsSelected.Archive = $('#spiHelper_ArchiveCase', $actionView).prop('checked')
   }
 
-  displayMessage('<ul id="spiHelper_status" />')
+  displayMessage('<div id="linkViewResults" hidden><h4>Generated links</h4><ul id="linkViewResultsList"></ul></div><h4>Running actions</h4><ul id="spiHelper_status" />')
 
   const $statusAnchor = $('#spiHelper_status', document)
 
@@ -1056,6 +1056,7 @@ async function spiHelperPerformActions () {
   logMessage += ' ~~~~~'
  
   if (spiHelperActionsSelected.Link) {
+    $('#linkViewResults', document).show()
     const spiHelper_usersForLinks = {
       'editorInteractionAnalyser': [],
       'interactionTimeline': [],
@@ -1077,10 +1078,9 @@ async function spiHelperPerformActions () {
       if ($('#spiHelper_link_pagesSPITools' + i, $actionView).prop('checked')) spiHelper_usersForLinks.pagesSPITools.push(username)
       if ($('#spiHelper_link_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelper_usersForLinks.checkUserWikiSearch.push(username)
     }
-    
-    const $headerLinkViewList = $('<p>').appendTo($('#spiHelper_status', document))
-    $headerLinkViewList.text('Generated links')
-    const $linkViewList = $('<ul>').appendTo($('#spiHelper_status', document))
+
+
+    const $linkViewList = $('#linkViewResultsList')
     for (let link in spiHelper_usersForLinks) {
       if (spiHelper_usersForLinks[link].length === 0) continue
       const URLentry = spiHelper_linkViewURLFormats[link]
@@ -1089,9 +1089,9 @@ async function spiHelperPerformActions () {
         const username = spiHelper_usersForLinks[link][i]
         generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
         if (URLentry.multipleUserQueryStringKeys) {
-          generatedURL += URLentry.userQueryStringKey + "=" + URLentry.userQueryStringWrapper + username + URLentry.userQueryStringWrapper
+          generatedURL += URLentry.userQueryStringKey + "=" + URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
         } else {
-          generatedURL += URLentry.userQueryStringWrapper + username + URLentry.userQueryStringWrapper
+          generatedURL += URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
         }
       }
       generatedURL += (URLentry.appendToQueryString === '' ? '': "&") + URLentry.appendToQueryString
