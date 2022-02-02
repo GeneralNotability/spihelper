@@ -1573,7 +1573,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
     backlinks.forEach((dictEntry) => {
       spiHelperEditPage(dictEntry.title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
     })
-    pagesChecked.append(currentPageToCheck)
+    pagesChecked.push(currentPageToCheck)
     backlinks = backlinks.filter((dictEntry) => {
       return pagesChecked.indexOf(dictEntry.title) === -1
     })
@@ -1788,10 +1788,10 @@ async function spiHelperMoveCase (target) {
       archivesCopied = true
     }
     // Now get existing protection levels on the target and existing page.
-    const oldPageNameProtection = spiHelperGetProtectionInformation(oldPageName)
-    const newPageNameProtection = spiHelperGetProtectionInformation(spiHelperPageName)
+    const oldPageNameProtection = await spiHelperGetProtectionInformation(oldPageName)
+    const newPageNameProtection = await spiHelperGetProtectionInformation(spiHelperPageName)
     const newProtectionValues = []
-    const siteProtectionInformation = spiHelperGetSiteRestrictionInformation()
+    const siteProtectionInformation = await spiHelperGetSiteRestrictionInformation()
     // First find if both the old page and new page had the same protection type enabled
     siteProtectionInformation.types.forEach((type) => {
       let oldPageNameEntry = oldPageNameProtection.filter((dict) => { return dict.type === type })
@@ -1817,16 +1817,16 @@ async function spiHelperMoveCase (target) {
         } else if (oldPageNameEntryLevelIndex <= newPageNameEntryLevelIndex) {
           newProtectionDict.push({ level: newPageNameEntry.level })
         }
-        newProtectionValues.append(newProtectionDict)
+        newProtectionValues.push(newProtectionDict)
       } else if (oldPageNameEntry.length > 0) {
-        newProtectionValues.append(oldPageNameEntry[0])
+        newProtectionValues.push(oldPageNameEntry[0])
       } else if (newPageNameEntry.length > 0) {
-        newProtectionValues.append(newPageNameEntry[0])
+        newProtectionValues.push(newPageNameEntry[0])
       }
     })
     // Now handle pending changes protection
-    const oldPageNameStabilisation = spiHelperGetStabilisationSettings(oldPageName)
-    const newPageNameStabilisation = spiHelperGetStabilisationSettings(spiHelperPageName)
+    const oldPageNameStabilisation = await spiHelperGetStabilisationSettings(oldPageName)
+    const newPageNameStabilisation = await spiHelperGetStabilisationSettings(spiHelperPageName)
     let newStabilisationSettings = { protection_level: '' }
     if (oldPageNameStabilisation !== false && newPageNameStabilisation !== false) {
       // Pending changes is used on both pages
