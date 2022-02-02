@@ -3501,8 +3501,8 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
  * @return {Promise<void>}
  */
 // eslint-disable-next-line no-unused-vars
-async function spiHelperAddBlankUserLine (table_name) {
-  if (table_name === 'block') {
+async function spiHelperAddBlankUserLine (tableName) {
+  if (tableName === 'block') {
     spiHelperBlockTableUserCount++
     await spiHelperGenerateBlockTableLine('', true, spiHelperBlockTableUserCount)
   } else {
