@@ -436,7 +436,7 @@ const spiHelperActionViewHTML = `
         <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
       </tr>
     </table>
-    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine("block");"/></span>
   </div>
   <div id="spiHelper_blockTagView">
     <h4 id="spiHelper_blockTagHeader">Blocking and tagging socks</h4>
@@ -507,7 +507,7 @@ const spiHelperActionViewHTML = `
         <td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
       </tr>
     </table>
-    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine("block");"/></span>
   </div>
   <div id="spiHelper_closeView">
     <h4>Marking case as closed</h4>
@@ -3501,8 +3501,8 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
  * @return {Promise<void>}
  */
 // eslint-disable-next-line no-unused-vars
-async function spiHelperAddBlankUserLine () {
-  if (spiHelperActionsSelected.Block) {
+async function spiHelperAddBlankUserLine (table_name) {
+  if (table_name === 'block') {
     spiHelperBlockTableUserCount++
     await spiHelperGenerateBlockTableLine('', true, spiHelperBlockTableUserCount)
   } else {
