@@ -2187,7 +2187,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     request.section = sectionId
   }
   if (watchExpiry) {
-    request.watchlistExpiry = watchExpiry
+    request.watchlistexpiry = watchExpiry
   }
   try {
     await api.postWithToken('csrf', request)
