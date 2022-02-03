@@ -842,7 +842,6 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_commentView', $actionView).hide()
   }
   if (spiHelperActionsSelected.Rename) {
-    if (spiHelperActionsSelected.Rename) {
     if (spiHelperCaseModeSelected.single || spiHelperSelectedSectionIds.length <= 1) {
       $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSelectedSectionNames[0] + '"')
     } else if (spiHelperCaseModeSelected.some) {
