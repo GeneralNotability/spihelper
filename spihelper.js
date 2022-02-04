@@ -875,6 +875,9 @@ async function spiHelperGenerateForm () {
     } else {
       $('#spiHelper_sockLinksView', $actionView).hide()
     }
+  } else {
+    $('#spiHelper_blockTagView', $actionView).hide()
+    $('#spiHelper_sockLinksView', $actionView).hide()
   }
   // Wire up the submit button
   $('#spiHelper_performActions', $actionView).one('click', () => {
