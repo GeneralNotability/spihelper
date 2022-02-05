@@ -765,12 +765,12 @@ async function spiHelperGenerateForm () {
     const socklistResults = pagetext.match(/{{\s*sock\s?list\s*([^}]*)}}/gi)
     if (socklistResults) {
       for (let i = 0; i < socklistResults.length; i++) {
-        const match = socklistResults[i].match(/{{\s*sock\s?list\s*([^}]*)}}/i)[1]
+        const socklistMatch = socklistResults[i].match(/{{\s*sock\s?list\s*([^}]*)}}/i)[1]
         // First split the text into parts based on the presence of a |
-        const arguments = match.split('|')
-        for (let j = 0; j < arguments.length; j++) {
+        const socklistArguments = socklistMatch.split('|')
+        for (let j = 0; j < socklistArguments.length; j++) {
           // Now try to split based on "=", if wasn't able to it means it's an unnamed argument
-          const splitArgument = arguments[j].split('=')
+          const splitArgument = socklistArguments[j].split('=')
           let username = ''
           if (splitArgument.length === 1) {
             username = spiHelperNormalizeUsername(splitArgument[0])
