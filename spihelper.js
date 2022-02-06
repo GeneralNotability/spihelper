@@ -1716,7 +1716,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
     backlinks = backlinks.filter((dictEntry) => {
       return pagesChecked.indexOf(dictEntry.title) === -1
     })
-    pagesToCheck.conct(backlinks)
+    pagesToCheck.concat(backlinks)
   }
 
   // The old case should just be the archivenotice template and point to the new case
