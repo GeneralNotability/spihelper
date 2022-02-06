@@ -1705,18 +1705,16 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   let currentPageToCheck = null
   while (pagesToCheck.length !== 0) {
     currentPageToCheck = pagesToCheck.pop()
-    let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
-    backlinks = backlinks.filter((dictEntry) => {
-      return spiHelperParseArchiveNotice(dictEntry.title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
-    })
-    backlinks.forEach((dictEntry) => {
-      spiHelperEditPage(dictEntry.title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
-    })
     pagesChecked.push(currentPageToCheck)
-    backlinks = backlinks.filter((dictEntry) => {
-      return pagesChecked.indexOf(dictEntry.title) === -1
-    })
-    pagesToCheck.concat(backlinks)
+    let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
+    for (let i = 0; i < backlinks.length; i++) {
+      if ((await spiHelperParseArchiveNotice(backlinks[i].title)).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')) {
+        spiHelperEditPage(backlinks[i].title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+        if (pagesChecked.indexOf(backlinks[i]).title !== -1) {
+          pagesToCheck.push(backlinks[i])
+        }
+      }
+    }
   }
 
   // The old case should just be the archivenotice template and point to the new case
