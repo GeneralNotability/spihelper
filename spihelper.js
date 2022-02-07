@@ -79,6 +79,8 @@ const spiHelperSettings = {
   reversed_log: false,
   // Enable the "move section" button
   iUnderstandSectionMoves: false,
+  // Automatically tick the "Archive case" option if the case is closed
+  tickArchiveWhenCaseClosed: true,
   // These are for debugging to view as other roles. If you're picking apart the code and
   // decide to set these (especially the CU option), it is YOUR responsibility to make sure
   // you don't do something that violates policy
@@ -99,6 +101,7 @@ const spiHelperValidSettings = {
   log: [true, false],
   reversed_log: [true, false],
   iUnderstandSectionMoves: [true, false],
+  tickArchiveWhenCaseClosed: [true, false],
   debugForceCheckuserState: [null, true, false],
   debugForceAdminState: [null, true, false]
 }
@@ -3154,7 +3157,9 @@ async function spiHelperSetCheckboxesBySection () {
 
     if (isClosed) {
       $closeBox.prop('disabled', true)
-      $archiveBox.prop('checked', true)
+      if (spiSettings.tickArchiveWhenCaseClosed) {
+        $archiveBox.prop('checked', true)
+      }
     } else {
       $archiveBox.prop('disabled', true)
     }
