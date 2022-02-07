@@ -3162,6 +3162,12 @@ async function spiHelperSetCheckboxesBySection () {
       }
     } else {
       $archiveBox.prop('disabled', true)
+      $('#spiHelper_Case_Action', $topView).on('click', function () {
+        $('#spiHelper_Close', $topView).prop('disabled', $('#spiHelper_Case_Action', $topView).prop('checked'))
+      })
+      $('#spiHelper_Close', $topView).on('click', function () {
+        $('#spiHelper_Case_Action', $topView).prop('disabled', $('#spiHelper_Close', $topView).prop('checked'))
+      })
     }
 
     // Change the label on the rename button
