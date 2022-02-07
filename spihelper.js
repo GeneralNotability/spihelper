@@ -3157,7 +3157,7 @@ async function spiHelperSetCheckboxesBySection () {
 
     if (isClosed) {
       $closeBox.prop('disabled', true)
-      if (spiSettings.tickArchiveWhenCaseClosed) {
+      if (spiHelperSettings.tickArchiveWhenCaseClosed) {
         $archiveBox.prop('checked', true)
       }
     } else {
