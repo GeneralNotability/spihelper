@@ -463,7 +463,7 @@ const spiHelperActionViewHTML = `
       </li>
       <li class="spiHelper_clerkClass">
         <input type="checkbox" checked="checked" name="spiHelper_tagAccountsWithoutLocalAccount" id="spiHelper_tagAccountsWithoutLocalAccount" />
-        <label for"spiHelper_tagAccountsWithoutLocalAccount">Tag accounts without an attached local account.</label>
+        <label for="spiHelper_tagAccountsWithoutLocalAccount">Tag accounts without an attached local account.</label>
       </li>
       <li class="spiHelper_cuClass">
         <input type="checkbox" name="spiHelper_cublock" id="spiHelper_cublock" />
@@ -2192,7 +2192,7 @@ function spiHelperGetMaxPostExpandSize () {
 function spiHelperGetInterwikiPrefix () {
   // Mostly copied from https://github.com/Xi-Plus/twinkle-global/blob/master/morebits.js
   // Most of this should be overkill (since most of these wikis don't have checkuser support)
-  /** @type {string[]} */ const temp = mw.config.get('wgServer').replace(/^(https?)?\/\//, '').split('.')
+  /** @type {string[]} */ const temp = mw.config.get('wgServer').replace(/^(https?:)?\/\//, '').split('.')
   const wikiLang = temp[0]
   const wikiFamily = temp[1]
   switch (wikiFamily) {
