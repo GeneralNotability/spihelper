@@ -3307,7 +3307,7 @@ function spiHelperInsertNote (source) {
  */
 function spiHelperCaseActionUpdated (source) {
   const $textBox = $('#spiHelper_CommentText', document)
-  const oldText = $textBox.val().toString()
+  let newText = $textBox.val().toString()
   let newTemplate = ''
   switch (source.val()) {
     case 'CUrequest':
@@ -3349,16 +3349,17 @@ function spiHelperCaseActionUpdated (source) {
       newTemplate = '{{onhold}}'
       break
   }
-  if (spiHelperClerkStatusRegex.test(oldText)) {
-    $textBox.val(oldText.replace(spiHelperClerkStatusRegex, newTemplate))
+  if (spiHelperClerkStatusRegex.test(newText)) {
+    newText = newText.replace(spiHelperClerkStatusRegex, newTemplate)
     if (!newTemplate) { // If the new template is empty, get rid of the stray ' - '
-      $textBox.val(oldText.replace(/^ - /, ''))
+      newText = newText.replace(/^(\s*\*\s*)? - /, '$1')
     }
   } else if (newTemplate) {
     // Don't try to insert if the "new template" is empty
     // Also remove the leading *
-    $textBox.val('*' + newTemplate + ' - ' + oldText.replace(/^\s*\*\s*/, ''))
+    newText = '*' + newTemplate + ' - ' + newText.replace(/^\s*\*\s*/, '')
   }
+  $textBox.val(newText)
 }
 
 /**
