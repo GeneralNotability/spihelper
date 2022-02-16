@@ -3488,7 +3488,7 @@ function spiHelperIsClerk () {
  */
 function spiHelperNormalizeUsername (username) {
   // Replace underscores with spaces
-  username = username.replace('/_/g', ' ')
+  username = username.replace(/_/g, ' ')
   // Get rid of bad hidden characters
   username = username.replace(spiHelperHiddenCharNormRegex, '')
   // Remove leading and trailing spaces
