@@ -765,7 +765,7 @@ async function spiHelperGenerateForm () {
         }
       }
     }
-    const unnamedParameterRegex = /\s*\d+\s*/gi
+    const unnamedParameterRegex = /^\s*\d+\s*$/i
     const socklistResults = pagetext.match(/{{\s*sock\s?list\s*([^}]*)}}/gi)
     if (socklistResults) {
       for (let i = 0; i < socklistResults.length; i++) {
