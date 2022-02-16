@@ -765,7 +765,7 @@ async function spiHelperGenerateForm () {
         }
       }
     }
-    const unnamedParameterRegex = /\s*\d+\s*/gi
+    const unnamedParameterRegex = /^\s*\d+\s*$/i
     const socklistResults = pagetext.match(/{{\s*sock\s?list\s*([^}]*)}}/gi)
     if (socklistResults) {
       for (let i = 0; i < socklistResults.length; i++) {
@@ -3488,7 +3488,7 @@ function spiHelperIsClerk () {
  */
 function spiHelperNormalizeUsername (username) {
   // Replace underscores with spaces
-  username = username.replace('/_/g', ' ')
+  username = username.replace(/_/g, ' ')
   // Get rid of bad hidden characters
   username = username.replace(spiHelperHiddenCharNormRegex, '')
   // Remove leading and trailing spaces
