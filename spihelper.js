@@ -79,6 +79,8 @@ const spiHelperSettings = {
   reversed_log: false,
   // Enable the "move section" button
   iUnderstandSectionMoves: false,
+  // Automatically tick the "Archive case" option if the case is closed
+  tickArchiveWhenCaseClosed: true,
   // These are for debugging to view as other roles. If you're picking apart the code and
   // decide to set these (especially the CU option), it is YOUR responsibility to make sure
   // you don't do something that violates policy
@@ -99,6 +101,7 @@ const spiHelperValidSettings = {
   log: [true, false],
   reversed_log: [true, false],
   iUnderstandSectionMoves: [true, false],
+  tickArchiveWhenCaseClosed: [true, false],
   debugForceCheckuserState: [null, true, false],
   debugForceAdminState: [null, true, false]
 }
@@ -233,6 +236,7 @@ const spiHelperAdminTemplates = [
   { label: 'Blocked, no tags', selected: false, value: '{{bwt}}' },
   { label: 'Blocked, awaiting tags', selected: false, value: '{{sblock}}' },
   { label: 'Blocked, tagged, closed', selected: false, value: '{{btc}}' },
+  { label: 'Requested actions completed, closing', selected: false, value: '{{Action and close}}' },
   { label: 'Diffs needed', selected: false, value: '{{DiffsNeeded|moreinfo}}' },
   { label: 'Locks requested', selected: false, value: '{{GlobalLocksRequested}}' }
 ]
@@ -462,7 +466,7 @@ const spiHelperActionViewHTML = `
         <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
       </tr>
     </table>
-    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine("block");"/></span>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
   </div>
   <div id="spiHelper_blockTagView">
     <h4 id="spiHelper_blockTagHeader">Blocking and tagging socks</h4>
@@ -477,7 +481,7 @@ const spiHelperActionViewHTML = `
       </li>
       <li class="spiHelper_clerkClass">
         <input type="checkbox" checked="checked" name="spiHelper_tagAccountsWithoutLocalAccount" id="spiHelper_tagAccountsWithoutLocalAccount" />
-        <label for"spiHelper_tagAccountsWithoutLocalAccount">Tag accounts without an attached local account.</label>
+        <label for="spiHelper_tagAccountsWithoutLocalAccount">Tag accounts without an attached local account.</label>
       </li>
       <li class="spiHelper_cuClass">
         <input type="checkbox" name="spiHelper_cublock" id="spiHelper_cublock" />
@@ -533,7 +537,7 @@ const spiHelperActionViewHTML = `
         <td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
       </tr>
     </table>
-    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine("block");"/></span>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
   </div>
   <div id="spiHelper_closeView">
     <h4>Marking case<span class="spiHelper_forSomeCases">s</span> as closed</h4>
@@ -880,6 +884,32 @@ async function spiHelperGenerateForm () {
         }
       }
     }
+    const unnamedParameterRegex = /^\s*\d+\s*$/i
+    const socklistResults = pagetext.match(/{{\s*sock\s?list\s*([^}]*)}}/gi)
+    if (socklistResults) {
+      for (let i = 0; i < socklistResults.length; i++) {
+        const socklistMatch = socklistResults[i].match(/{{\s*sock\s?list\s*([^}]*)}}/i)[1]
+        // First split the text into parts based on the presence of a |
+        const socklistArguments = socklistMatch.split('|')
+        for (let j = 0; j < socklistArguments.length; j++) {
+          // Now try to split based on "=", if wasn't able to it means it's an unnamed argument
+          const splitArgument = socklistArguments[j].split('=')
+          let username = ''
+          if (splitArgument.length === 1) {
+            username = spiHelperNormalizeUsername(splitArgument[0])
+          } else if (unnamedParameterRegex.test(splitArgument[0])) {
+            username = spiHelperNormalizeUsername(splitArgument.slice(1).join('='))
+          }
+          if (username !== '') {
+            if (mw.util.isIPAddress(username, true) && !likelyips.includes(username)) {
+              likelyusers.push(username)
+            } else if (!likelyusers.includes(username)) {
+              likelyusers.push(username)
+            }
+          }
+        }
+      }
+    }
     // eslint-disable-next-line no-useless-escape
     const userRegex = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
     const userresults = pagetext.match(userRegex)
@@ -994,6 +1024,9 @@ async function spiHelperGenerateForm () {
     } else {
       $('#spiHelper_sockLinksView', $actionView).hide()
     }
+  } else {
+    $('#spiHelper_blockTagView', $actionView).hide()
+    $('#spiHelper_sockLinksView', $actionView).hide()
   }
   // Wire up the submit button
   $('#spiHelper_performActions', $actionView).one('click', () => {
@@ -1989,18 +2022,16 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   let currentPageToCheck = null
   while (pagesToCheck.length !== 0) {
     currentPageToCheck = pagesToCheck.pop()
-    let backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
-    backlinks = backlinks.filter((dictEntry) => {
-      return spiHelperParseArchiveNotice(dictEntry.title).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')
-    })
-    backlinks.forEach((dictEntry) => {
-      spiHelperEditPage(dictEntry.title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
-    })
     pagesChecked.push(currentPageToCheck)
-    backlinks = backlinks.filter((dictEntry) => {
-      return pagesChecked.indexOf(dictEntry.title) === -1
-    })
-    pagesToCheck.conct(backlinks)
+    const backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
+    for (let i = 0; i < backlinks.length; i++) {
+      if ((await spiHelperParseArchiveNotice(backlinks[i].title)).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')) {
+        spiHelperEditPage(backlinks[i].title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+        if (pagesChecked.indexOf(backlinks[i]).title !== -1) {
+          pagesToCheck.push(backlinks[i])
+        }
+      }
+    }
   }
 
   // The old case should just be the archivenotice template and point to the new case
@@ -2463,7 +2494,7 @@ function spiHelperGetMaxPostExpandSize () {
 function spiHelperGetInterwikiPrefix () {
   // Mostly copied from https://github.com/Xi-Plus/twinkle-global/blob/master/morebits.js
   // Most of this should be overkill (since most of these wikis don't have checkuser support)
-  /** @type {string[]} */ const temp = mw.config.get('wgServer').replace(/^(https?)?\/\//, '').split('.')
+  /** @type {string[]} */ const temp = mw.config.get('wgServer').replace(/^(https?:)?\/\//, '').split('.')
   const wikiLang = temp[0]
   const wikiFamily = temp[1]
   switch (wikiFamily) {
@@ -3460,9 +3491,17 @@ async function spiHelperSetCheckboxesBySection () {
 
     if (isClosed) {
       $closeBox.prop('disabled', true)
-      $archiveBox.prop('checked', true)
+      if (spiHelperSettings.tickArchiveWhenCaseClosed) {
+        $archiveBox.prop('checked', true)
+      }
     } else {
       $archiveBox.prop('disabled', true)
+      $('#spiHelper_Case_Action', $topView).on('click', function () {
+        $('#spiHelper_Close', $topView).prop('disabled', $('#spiHelper_Case_Action', $topView).prop('checked'))
+      })
+      $('#spiHelper_Close', $topView).on('click', function () {
+        $('#spiHelper_Case_Action', $topView).prop('disabled', $('#spiHelper_Close', $topView).prop('checked'))
+      })
     }
 
     // Change the label on the rename button
@@ -3665,7 +3704,7 @@ function spiHelperInsertNote (source) {
  */
 function spiHelperCaseActionUpdated (source) {
   const $textBox = $('#spiHelper_CommentText', document)
-  const oldText = $textBox.val().toString()
+  let newText = $textBox.val().toString()
   let newTemplate = ''
   switch (source.val()) {
     case 'CUrequest':
@@ -3707,16 +3746,17 @@ function spiHelperCaseActionUpdated (source) {
       newTemplate = '{{onhold}}'
       break
   }
-  if (spiHelperClerkStatusRegex.test(oldText)) {
-    $textBox.val(oldText.replace(spiHelperClerkStatusRegex, newTemplate))
+  if (spiHelperClerkStatusRegex.test(newText)) {
+    newText = newText.replace(spiHelperClerkStatusRegex, newTemplate)
     if (!newTemplate) { // If the new template is empty, get rid of the stray ' - '
-      $textBox.val(oldText.replace(/^ - /, ''))
+      newText = newText.replace(/^(\s*\*\s*)? - /, '$1')
     }
   } else if (newTemplate) {
     // Don't try to insert if the "new template" is empty
     // Also remove the leading *
-    $textBox.val('*' + newTemplate + ' - ' + oldText.replace(/^\s*\*\s*/, ''))
+    newText = '*' + newTemplate + ' - ' + newText.replace(/^\s*\*\s*/, '')
   }
+  $textBox.val(newText)
 }
 
 /**
@@ -3845,7 +3885,7 @@ function spiHelperIsClerk () {
  */
 function spiHelperNormalizeUsername (username) {
   // Replace underscores with spaces
-  username = username.replace('/_/g', ' ')
+  username = username.replace(/_/g, ' ')
   // Get rid of bad hidden characters
   username = username.replace(spiHelperHiddenCharNormRegex, '')
   // Remove leading and trailing spaces
