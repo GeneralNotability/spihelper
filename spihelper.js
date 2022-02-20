@@ -604,6 +604,32 @@ async function spiHelperGenerateForm () {
         }
       }
     }
+    const unnamedParameterRegex = /^\s*\d+\s*$/i
+    const socklistResults = pagetext.match(/{{\s*sock\s?list\s*([^}]*)}}/gi)
+    if (socklistResults) {
+      for (let i = 0; i < socklistResults.length; i++) {
+        const socklistMatch = socklistResults[i].match(/{{\s*sock\s?list\s*([^}]*)}}/i)[1]
+        // First split the text into parts based on the presence of a |
+        const socklistArguments = socklistMatch.split('|')
+        for (let j = 0; j < socklistArguments.length; j++) {
+          // Now try to split based on "=", if wasn't able to it means it's an unnamed argument
+          const splitArgument = socklistArguments[j].split('=')
+          let username = ''
+          if (splitArgument.length === 1) {
+            username = spiHelperNormalizeUsername(splitArgument[0])
+          } else if (unnamedParameterRegex.test(splitArgument[0])) {
+            username = spiHelperNormalizeUsername(splitArgument.slice(1).join('='))
+          }
+          if (username !== '') {
+            if (mw.util.isIPAddress(username, true) && !likelyips.includes(username)) {
+              likelyusers.push(username)
+            } else if (!likelyusers.includes(username)) {
+              likelyusers.push(username)
+            }
+          }
+        }
+      }
+    }
     // eslint-disable-next-line no-useless-escape
     const userRegex = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
     const userresults = pagetext.match(userRegex)
