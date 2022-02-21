@@ -3038,7 +3038,7 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
 
   // Add onlistener events to update the global lock checkbox if the username is changed between a IP address and username
   $('#spiHelper_block_username' + id).on('change', (event) => {
-    let id = $(event.target).attr('id').replace('spiHelper_block_username', '')
+    const id = $(event.target).attr('id').replace('spiHelper_block_username', '')
     $('#spiHelper_block_lock' + id).prop('disabled', mw.util.isIPAddress($(event.target).val(), true))
   })
 }
