@@ -782,9 +782,10 @@ async function spiHelperGenerateForm () {
             username = spiHelperNormalizeUsername(splitArgument.slice(1).join('='))
           }
           if (username !== '') {
-            if (mw.util.isIPAddress(username, true) && !likelyips.includes(username)) {
-              likelyusers.push(username)
-            } else if (!likelyusers.includes(username)) {
+            const isIP = mw.util.isIPAddress(username, true)
+            if (isIP && !likelyips.includes(username)) {
+              likelyips.push(username)
+            } else if (!isIP && !likelyusers.includes(username)) {
               likelyusers.push(username)
             }
           }
@@ -797,10 +798,11 @@ async function spiHelperGenerateForm () {
     if (userresults) {
       for (let i = 0; i < userresults.length; i++) {
         const username = spiHelperNormalizeUsername(userresults[i].replace(userRegex, '$1'))
-        if (mw.util.isIPAddress(username, true) && !possibleips.includes(username) &&
+        const isIP = mw.util.isIPAddress(username, true)
+        if (isIP && !possibleips.includes(username) &&
           !likelyips.includes(username)) {
           possibleips.push(username)
-        } else if (!possibleusers.includes(username) &&
+        } else if (!isIP && !possibleusers.includes(username) &&
           !likelyusers.includes(username)) {
           possibleusers.push(username)
         }
