@@ -3035,6 +3035,12 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   // Generate the select entries
   spiHelperGenerateSelect('spiHelper_block_tag' + id, spiHelperTagOptions)
   spiHelperGenerateSelect('spiHelper_block_tag_altmaster' + id, spiHelperAltMasterTagOptions)
+
+  // Add onlistener events to update the global lock checkbox if the username is changed between a IP address and username
+  $('#spiHelper_block_username' + id).on('change', (event) => {
+    const id = $(event.target).attr('id').replace('spiHelper_block_username', '')
+    $('#spiHelper_block_lock' + id).prop('disabled', mw.util.isIPAddress($(event.target).val(), true))
+  })
 }
 
 async function spiHelperGenerateLinksTableLine (username, id) {
