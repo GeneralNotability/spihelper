@@ -18,6 +18,10 @@
     width: 10vw;
 }
 
+.spiHelper_forSomeCases {
+    display: none;
+}
+
 #spiHelper_userInfoTable th {
     padding: 0 2px;
 }

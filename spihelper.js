@@ -17,7 +17,7 @@ importScript('User:Timotheus Canens/displaymessage.js')
  * @property {string} label Text to display in the drop-down
  * @property {string} value Value to return if this option is selected
  * @property {boolean} selected Whether this item should be selected by default
- * @property {boolean=} disabled Whether this item should be disabled
+ * @property {boolean} disabled Whether this item should be disabled
  */
 
 /**
@@ -139,11 +139,11 @@ if (spiHelperIsThisPageAnArchive) {
 /** list of section IDs + names corresponding to separate investigations */
 let spiHelperCaseSections = []
 
-/** @type {?number} Selected section, "null" means that we're opearting on the entire page */
-let spiHelperSectionId = null
+/** @type {?number} Selected section, "null" as the first element means that we're opearting on the entire page or in selected sections mode */
+let spiHelperSelectedSectionIds = [null]
 
 /** @type {?string} Selected section's name (e.g. "10 June 2020") */
-let spiHelperSectionName = null
+let spiHelperSelectedSectionNames = [null]
 
 /** @type {ParsedArchiveNotice} */
 let spiHelperArchiveNoticeParams
@@ -158,6 +158,13 @@ const spiHelperActionsSelected = {
   Rename: false,
   Archive: false,
   SpiMgmt: false
+}
+
+/** Map of case modes. Only one should be true at once. Single means one section, all means all cases and some means selected cases. */
+const spiHelperCaseModeSelected = {
+  some: false,
+  all: false,
+  single: false
 }
 
 /** @type {BlockEntry[]} Requested blocks */
@@ -288,12 +295,17 @@ const spiHelperTopViewHTML = `
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
+  <div class="spiHelper_forSomeCases">
+    <p>Select the cases you want to work on.</p>
+    <ul id="spiHelper_multipleSectionSelect"></ul>
+    <br>
+  </div>
   <ul>
-    <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
+    <li id="spiHelper_actionLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
-      <label for="spiHelper_Case_Action">Change case status</label>
+      <label for="spiHelper_Case_Action">Change case status<span class="spiHelper_forSomeCases">es</span></label>
     </li>
-    <li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly spiHelper_notOnArchive">
+    <li id="spiHelper_spiMgmtLine" class="spiHelper_allCasesOnly spiHelper_notOnArchive">
       <input type="checkbox" id="spiHelper_SpiMgmt" />
       <label for="spiHelper_SpiMgmt">Change SPI options</label>
     </li>
@@ -311,7 +323,7 @@ const spiHelperTopViewHTML = `
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
-      <label for="spiHelper_Close">Close case</label>
+      <label for="spiHelper_Close">Close case<span class="spiHelper_forSomeCases">s</span></label>
     </li>
     <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
@@ -319,7 +331,7 @@ const spiHelperTopViewHTML = `
     </li>
     <li id="spiHelper_archiveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
-      <label for="spiHelper_Archive">Archive case (Clerk only)</label>
+      <label for="spiHelper_Archive">Archive case<span class="spiHelper_forSomeCases">s</span> (Clerk only)</label>
     </li>
   </ul>
   <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" />
@@ -342,8 +354,8 @@ async function spiHelperInit () {
   // Narrow search scope
   const $topView = $('#spiHelper_topViewDiv', document)
 
-  if (spiHelperArchiveNoticeParams.username === null) {
-    // No archive notice was found
+  if (spiHelperArchiveNoticeParams.username === null && !spiHelperIsThisPageAnArchive) {
+    // No archive notice was found. Add it before we can continue.
     const $warningText = $('#spiHelper_warning', $topView)
     $warningText.show()
     $warningText.append($('<b>').text('Can\'t find archivenotice template! Automatically adding the archive notice to the page.'))
@@ -356,7 +368,7 @@ async function spiHelperInit () {
     if (pagetext.indexOf('__TOC__') === -1) {
       pagetext = '<noinclude>__TOC__</noinclude>\n' + pagetext
     }
-    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice automatically', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
   }
 
   // Next, modify what's displayed
@@ -377,20 +389,25 @@ async function spiHelperInit () {
     spiHelperSetCheckboxesBySection()
   })
 
+  const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
   // Add the dates to the selector
   for (let i = 0; i < spiHelperCaseSections.length; i++) {
     const s = spiHelperCaseSections[i]
     $('<option>').val(s.index).text(s.line).appendTo($sectionSelect)
+    const $li = $('<li>').attr('id', 'spiHelper_li_' + s.index.toString()).appendTo($multipleSectionSelect)
+    $('<input>').attr('type', 'checkbox').val(s.index).attr('id', 'spiHelper_input_' + s.index.toString()).appendTo($li)
+    $li.append(' ')
+    $('<label>').text(s.line).attr('for', 'spiHelper_input_' + s.index.toString()).appendTo($li)
+  }
+  // Selected-sections selector. Used to change the case status, close or archive selected sections all at once. Don't show if there are no cases
+  if (spiHelperCaseSections.length > 0) {
+    $('<option>').val('some').text('Selected Sections').appendTo($sectionSelect)
   }
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
   updateForRole($topView)
 
-  // Only show options suitable for the archive subpage when running on the archives
-  if (spiHelperIsThisPageAnArchive) {
-    $('.spiHelper_notOnArchive', $topView).hide()
-  }
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
 
@@ -403,9 +420,10 @@ const spiHelperActionViewHTML = `
 <div id="spiHelper_actionViewDiv">
   <small><a id="spiHelper_backLink">Back to top menu</a></small>
   <br />
-  <h3>Handling SPI case</h3>
+  <h3>Handling SPI <span class="spiHelper_allCasesOnly">page</span><span class="spiHelper_singleCaseOnly spiHelper_forSomeCases">case<span class="spiHelper_forSomeCases">s</span></span></h3>
+  <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
   <div id="spiHelper_actionView">
-    <h4>Changing case status</h4>
+    <h4>Changing case status<span class="spiHelper_forSomeCases">es</span></h4>
     <label for="spiHelper_CaseAction">New status:</label>
     <select id="spiHelper_CaseAction"></select>
   </div>
@@ -522,22 +540,32 @@ const spiHelperActionViewHTML = `
     <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
   </div>
   <div id="spiHelper_closeView">
-    <h4>Marking case as closed</h4>
+    <h4>Marking case<span class="spiHelper_forSomeCases">s</span> as closed</h4>
     <input type="checkbox" checked="checked" id="spiHelper_CloseCase" />
-    <label for="spiHelper_CloseCase">Close this SPI case</label>
-  </div>
+    <label for="spiHelper_CloseCase">Close th<span class="spiHelper_notForSomeCases">is</span><span class="spiHelper_forSomeCases">se</span> SPI case<span class="spiHelper_forSomeCases">s</span></label>
+   </div>
   <div id="spiHelper_moveView">
-    <h4 id="spiHelper_moveHeader">Move section</h4>
+    <h4 id="spiHelper_moveHeader">Move section<span class="spiHelper_forSomeCases">s</span></h4>
     <label for="spiHelper_moveTarget">New sockmaster username: </label>
     <input type="text" name="spiHelper_moveTarget" id="spiHelper_moveTarget" />
   </div>
   <div id="spiHelper_archiveView">
-    <h4>Archiving case</h4>
+    <h4>Archiving case<span class="spiHelper_forSomeCases">s</span></h4>
     <input type="checkbox" checked="checked" name="spiHelper_ArchiveCase" id="spiHelper_ArchiveCase" />
-    <label for="spiHelper_ArchiveCase">Archive this SPI case</label>
+    <label for="spiHelper_ArchiveCase">Archive th<span class="spiHelper_notForSomeCases">is</span><span class="spiHelper_forSomeCases">se</span> SPI case<span class="spiHelper_forSomeCases">s</span></label>
   </div>
   <div id="spiHelper_commentView">
     <h4>Comments</h4>
+    <ul class="spiHelper_forSomeCases">
+      <li>
+        <input type="checkbox" name="spiHelper_duplicateComment" id="spiHelper_duplicateComment" />
+        <label for="spiHelper_duplicateComment">Add the comment to every selected section.</label>
+      </li>
+      <li>
+        <input type="checkbox" name="spiHelper_referenceComment" id="spiHelper_referenceComment" checked="checked" />
+        <label for="spiHelper_referenceComment">Add a reference to the section with the comment in every other section.</label>
+      </li>
+    </ul>
     <span>
       <select id="spiHelper_noteSelect"></select>
       <select class="spiHelper_adminClerkClass" id="spiHelper_adminSelect"></select>
@@ -567,6 +595,8 @@ async function spiHelperGenerateForm () {
   spiHelperBlockTableUserCount = 0
   spiHelperLinkTableUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
+  const $warningText = $('#spiHelper_warning', $topView)
+  $warningText.hide()
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
   spiHelperActionsSelected.Link = $('#spiHelper_userInfo', $topView).prop('checked')
@@ -575,7 +605,39 @@ async function spiHelperGenerateForm () {
   spiHelperActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked')
   spiHelperActionsSelected.Archive = $('#spiHelper_Archive', $topView).prop('checked')
   spiHelperActionsSelected.SpiMgmt = $('#spiHelper_SpiMgmt', $topView).prop('checked')
-  const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
+  spiHelperCaseModeSelected.some = $('#spiHelper_sectionSelect', $topView).val() === 'some'
+  spiHelperCaseModeSelected.all = $('#spiHelper_sectionSelect', $topView).val() === 'all'
+  spiHelperCaseModeSelected.single = !['all', 'some'].includes($('#spiHelper_sectionSelect', $topView).val())
+  const spiHelperSelectedCaseStatuses = new Set()
+  if (spiHelperCaseModeSelected.some) {
+    spiHelperSelectedSectionIds = $('#spiHelper_multipleSectionSelect', $topView).find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
+    for (let i = 0; i < spiHelperCaseSections.length; i++) {
+      if (spiHelperSelectedSectionIds.indexOf(spiHelperCaseSections[i].index) >= 0) {
+        spiHelperSelectedSectionNames[spiHelperSelectedSectionIds.indexOf(spiHelperCaseSections[i].index)] = spiHelperCaseSections[i].line
+        const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperCaseSections[i].index)
+        const result = spiHelperCaseStatusRegex.exec(sectionText)
+        let casestatus = ''
+        if (result) {
+          casestatus = result[1]
+        } else if (!spiHelperIsThisPageAnArchive) {
+          $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[spiHelperSelectedSectionIds.indexOf(spiHelperCaseSections[i].index)]}!`))
+          $warningText.show()
+        }
+        spiHelperSelectedCaseStatuses.add(casestatus)
+      }
+    }
+  } else if (spiHelperCaseModeSelected.single) {
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[0])
+    const result = spiHelperCaseStatusRegex.exec(sectionText)
+    let casestatus = ''
+    if (result) {
+      casestatus = result[1]
+    } else if (!spiHelperIsThisPageAnArchive) {
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[0]}!`))
+      $warningText.show()
+    }
+    spiHelperSelectedCaseStatuses.add(casestatus)
+  }
   if (!(spiHelperActionsSelected.Case_act ||
     spiHelperActionsSelected.Note || spiHelperActionsSelected.Close ||
     spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block || spiHelperActionsSelected.Link ||
@@ -593,30 +655,83 @@ async function spiHelperGenerateForm () {
   $('#spiHelper_backLink', $actionView).one('click', () => {
     spiHelperInit()
   })
-  if (spiHelperActionsSelected.Case_act) {
-    const result = spiHelperCaseStatusRegex.exec(pagetext)
-    let casestatus = ''
-    if (result) {
-      casestatus = result[1]
-    }
-    const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
-    const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus)
-    const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus)
-    const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudeclin(ed)?)$/i.test(casestatus)
 
+  if (spiHelperCaseModeSelected.some && spiHelperSelectedSectionIds.length > 1) {
+    $('.spiHelper_forSomeCases', $actionView).show()
+    $('.spiHelper_notForSomeCases', $actionView).hide()
+  } else {
+    $('.spiHelper_forSomeCases', $actionView).hide()
+    $('.spiHelper_notForSomeCases', $actionView).show()
+  }
+  if (spiHelperCaseModeSelected.all) {
+    $('.spiHelper_allCasesOnly', $actionView).show()
+    $('.spiHelper_singleCaseOnly', $actionView).hide()
+  } else {
+    $('.spiHelper_allCasesOnly', $actionView).hide()
+    $('.spiHelper_singleCaseOnly', $actionView).show()
+  }
+  if (spiHelperActionsSelected.Case_act) {
     /** @type {SelectOption[]} Generated array of values for the case status select box */
     const selectOpts = [
       { label: 'No action', value: 'noaction', selected: true }
     ]
-    if (spiHelperCaseClosedRegex.test(casestatus)) {
+    // Those not in this list were not dependent on the case status to be enabled, so did not have to be checked against every section.
+    const possibleCaseActions = {
+      reopen: true,
+      open: true,
+      CUrequest: true,
+      selfendorse: true,
+      cuendorse: true,
+      cudecline: true,
+      decline: true,
+      cumoreinfo: true,
+      relist: true
+    }
+    spiHelperSelectedCaseStatuses.forEach((casestatus) => {
+      const canAddCURequest = (casestatus === '' || /^(?:admin|moreinfo|cumoreinfo|hold|cuhold|clerk|open)$/i.test(casestatus))
+      const cuRequested = /^(?:CU|checkuser|CUrequest|request|cumoreinfo)$/i.test(casestatus)
+      const cuEndorsed = /^(?:endorse(d)?)$/i.test(casestatus)
+      const cuCompleted = /^(?:inprogress|checking|relist(ed)?|checked|completed|declined?|cudecline(d)?)$/i.test(casestatus)
+
+      // For the next few if statements, if the match fails it means that the option cannot be applied to this particular section
+      // For the Selected Sections mode all the cases selected must be able to be set to this particular status by this user
+      // for the option to be displayed.
+      if (!spiHelperCaseClosedRegex.test(casestatus)) {
+        possibleCaseActions.reopen = false
+      }
+      if (!(spiHelperIsClerk() && casestatus === 'clerk') && !(spiHelperIsAdmin() && casestatus === 'admin')) {
+        // Allow clerks to change the status from clerk to open. Allow admins to set case status to open.
+        possibleCaseActions.open = false
+      }
+      if (!canAddCURequest) {
+        // Statuses only available if the case could be moved to "CU requested"
+        possibleCaseActions.CUrequest = false
+      }
+      if (!spiHelperIsClerk() || !canAddCURequest) {
+        possibleCaseActions.selfendorse = false
+      }
+      // CU already requested
+      if (!cuRequested || !spiHelperIsClerk()) {
+        // Statuses only available if CU has been requested, only clerks + CUs should use these
+        possibleCaseActions.endorse = false
+        possibleCaseActions.decline = false
+        possibleCaseActions.cumoreinfo = false
+      }
+      if (!cuRequested || !spiHelperIsCheckuser()) {
+        possibleCaseActions.cuendorse = false
+        possibleCaseActions.cudecline = false
+      }
+      if (!cuEndorsed || !spiHelperIsCheckuser()) {
+        possibleCaseActions.cudecline = false
+        possibleCaseActions.cumoreinfo = false
+      }
+      if (!spiHelperIsClerk() || !cuCompleted) {
+        possibleCaseActions.relist = false
+      }
+    })
+    if (possibleCaseActions.reopen) {
       selectOpts.push({ label: 'Reopen', value: 'reopen', selected: false })
-    } else if (spiHelperIsClerk() && casestatus === 'clerk') {
-      // Allow clerks to change the status from clerk to open.
-      // Used when clerk assistance has been given and the case previously had the status 'open'.
-      selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
-    } else if (spiHelperIsAdmin() && casestatus === 'admin') {
-      // Allow admins to change the status to open from admin
-      // Used when admin assistance has been given to the non-admin clerk and the case previously had the status 'open'.
+    } else if (possibleCaseActions.open) {
       selectOpts.push({ label: 'Mark as open', value: 'open', selected: false })
     }
     if (spiHelperIsCheckuser()) {
@@ -625,32 +740,25 @@ async function spiHelperGenerateForm () {
     if (spiHelperIsClerk() || spiHelperIsAdmin()) {
       selectOpts.push({ label: 'Request more information', value: 'moreinfo', selected: false })
     }
-    if (canAddCURequest) {
-      // Statuses only available if the case could be moved to "CU requested"
+    if (possibleCaseActions.CUrequest) {
       selectOpts.push({ label: 'Request CU', value: 'CUrequest', selected: false })
-      if (spiHelperIsClerk()) {
-        selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false })
-      }
     }
-    // CU already requested
-    if (cuRequested && spiHelperIsClerk()) {
-      // Statuses only available if CU has been requested, only clerks + CUs should use these
+    if (possibleCaseActions.selfendorse) {
+      selectOpts.push({ label: 'Request CU and self-endorse', value: 'selfendorse', selected: false })
+    }
+    if (possibleCaseActions.endorse) {
       selectOpts.push({ label: 'Endorse for CU attention', value: 'endorse', selected: false })
-      // Switch the decline option depending on whether the user is a checkuser
-      if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false })
-      }
-      if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
-      } else {
-        selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false })
-      }
-      selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
-    } else if (cuEndorsed && spiHelperIsCheckuser()) {
-      // Let checkusers decline endorsed cases
-      if (spiHelperIsCheckuser()) {
-        selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
-      }
+    }
+    if (possibleCaseActions.cuendorse) {
+      selectOpts.push({ label: 'Endorse CU as a CheckUser', value: 'cuendorse', selected: false })
+    }
+    if (possibleCaseActions.decline) {
+      selectOpts.push({ label: 'Decline CU', value: 'decline', selected: false })
+    }
+    if (possibleCaseActions.cudecline) {
+      selectOpts.push({ label: 'Decline CU', value: 'cudecline', selected: false })
+    }
+    if (possibleCaseActions.cumoreinfo) {
       selectOpts.push({ label: 'Request more information for CU', value: 'cumoreinfo', selected: false })
     }
     // This is mostly a CU function, but let's let clerks and admins set it
@@ -658,7 +766,7 @@ async function spiHelperGenerateForm () {
     if (spiHelperIsAdmin() || spiHelperIsClerk()) {
       selectOpts.push({ label: 'Mark as checked', value: 'checked', selected: false })
     }
-    if (spiHelperIsClerk() && cuCompleted) {
+    if (possibleCaseActions.relist) {
       selectOpts.push({ label: 'Relist for another check', value: 'relist', selected: false })
     }
     if (spiHelperIsCheckuser()) {
@@ -699,6 +807,7 @@ async function spiHelperGenerateForm () {
   if (!spiHelperActionsSelected.Archive) {
     $('#spiHelper_archiveView', $actionView).hide()
   }
+
   // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
   if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
     // generate the note prefixes
@@ -737,8 +846,10 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_commentView', $actionView).hide()
   }
   if (spiHelperActionsSelected.Rename) {
-    if (spiHelperSectionId) {
-      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
+    if (spiHelperCaseModeSelected.single || spiHelperSelectedSectionIds.length <= 1) {
+      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSelectedSectionNames[0] + '"')
+    } else if (spiHelperCaseModeSelected.some) {
+      $('#spiHelper_moveHeader', $actionView).text('Move sections')
     } else {
       $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
     }
@@ -746,6 +857,14 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_moveView', $actionView).hide()
   }
   if (spiHelperActionsSelected.Block || spiHelperActionsSelected.Link) {
+    let pagetext = ''
+    if (spiHelperCaseModeSelected.some) {
+      for (let i = 0; i < spiHelperSelectedSectionIds.length; i++) {
+        pagetext = pagetext + await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[i])
+      }
+    } else {
+      pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[0])
+    }
     // eslint-disable-next-line no-useless-escape
     const checkuserRegex = /{{\s*check(?:user|ip)\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*(?:\|master name\s*=\s*.*)?}}/gi
     const results = pagetext.match(checkuserRegex)
@@ -987,6 +1106,10 @@ async function spiHelperPerformActions () {
   const overrideExisting = $('#spiHelper_override', $actionView).prop('checked')
   /** @type {boolean} */
   const hideLockNames = $('#spiHelper_hidelocknames', $actionView).prop('checked')
+  /** @type {boolean} */
+  const addCommentToEverySection = $('#spiHelper_duplicateComment', $actionView).prop('checked')
+  /** @type {boolean} */
+  const referenceCommentInOtherSections = $('#spiHelper_referenceComment', $actionView).prop('checked')
 
   if (spiHelperActionsSelected.Case_act) {
     newCaseStatus = $('#spiHelper_CaseAction', $actionView).val().toString()
@@ -996,7 +1119,7 @@ async function spiHelperPerformActions () {
     spiHelperArchiveNoticeParams.xwiki = $('#spiHelper_spiMgmt_crosswiki', $actionView).prop('checked')
     spiHelperArchiveNoticeParams.notalk = $('#spiHelper_spiMgmt_notalk', $actionView).prop('checked')
   }
-  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
+  if (!spiHelperCaseModeSelected.all && !spiHelperIsThisPageAnArchive) {
     comment = $('#spiHelper_CommentText', $actionView).val().toString()
   }
   if (spiHelperActionsSelected.Block) {
@@ -1088,15 +1211,19 @@ async function spiHelperPerformActions () {
 
   const $statusAnchor = $('#spiHelper_status', document)
 
-  let sectionText = await spiHelperGetPageText(spiHelperPageName, true, spiHelperSectionId)
   let editsummary = ''
   let logMessage = '* [[' + spiHelperPageName + ']]'
-  if (spiHelperSectionId) {
-    logMessage += ' (section ' + spiHelperSectionName + ')'
+  if (spiHelperCaseModeSelected.single || spiHelperSelectedSectionIds.length < 2) {
+    logMessage += ' (section ' + spiHelperSelectedSectionNames[0] + ')'
+  } else if (spiHelperCaseModeSelected.some) {
+    logMessage += ' (sections ' + spiHelperSelectedSectionNames.reduce((text, sectionName, i) => {
+      return text + (spiHelperSelectedSectionNames.length - 1 > i ? ', ' : ' and ') + sectionName
+    }) + ')'
   } else {
     logMessage += ' (full case)'
   }
   logMessage += ' ~~~~~'
+
 
   if (spiHelperActionsSelected.Link) {
     $('#linkViewResults', document).show()
@@ -1595,88 +1722,248 @@ async function spiHelperPerformActions () {
       }
     }
   }
-  if (spiHelperSectionId && comment && comment !== '*' && !spiHelperIsThisPageAnArchive) {
-    if (!sectionText.includes('\n----')) {
-      sectionText.replace('<!--- All comments go ABOVE this line, please. -->', '')
-      sectionText.replace('<!-- All comments go ABOVE this line, please. -->', '')
-      sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
-    }
-    if (!/~~~~/.test(comment)) {
-      comment += ' ~~~~'
-    }
-    // Clerks and admins post in the admin section
-    if (spiHelperIsClerk() || spiHelperIsAdmin()) {
-      // Complicated regex to find the first regex in the admin section
-      // The weird (\n|.) is because we can't use /s (dot matches newline) regex mode without ES9,
-      // I don't want to go there yet
-      sectionText = sectionText.replace(/\n*----(?!(\n|.)*----)/, '\n' + comment + '\n----')
-    } else { // Everyone else posts in the "other users" section
-      sectionText = sectionText.replace(spiHelperAdminSectionWithPrecedingNewlinesRegex,
-        '\n' + comment + '\n====<big>Clerk, CheckUser, and/or patrolling admin comments</big>====\n')
-    }
+
+  if (spiHelperActionsSelected.SpiMgmt) {
+    let sectionText = await spiHelperGetPageText(spiHelperPageName, true)
+    const newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams)
+    sectionText = sectionText.replace(spiHelperArchiveNoticeRegex, newArchiveNotice)
     if (editsummary) {
-      editsummary += ', comment'
+      editsummary += ', update archivenotice'
     } else {
-      editsummary = 'Comment'
+      editsummary = 'Update archivenotice'
     }
-    logMessage += '\n** commented'
-  }
-
-  if (spiHelperActionsSelected.Close) {
-    newCaseStatus = 'close'
-    if (editsummary) {
-      editsummary += ', marking case as closed'
-    } else {
-      editsummary = 'Marking case as closed'
-    }
-    logMessage += '\n** closed case'
-  }
-  if (spiHelperSectionId !== null && !spiHelperIsThisPageAnArchive) {
-    const caseStatusText = spiHelperCaseStatusRegex.exec(sectionText)[0]
-    sectionText = sectionText.replace(caseStatusText, '{{SPI case status|' + newCaseStatus + '}}')
-  }
-
-  // Fallback: if we somehow managed to not make an edit summary, add a default one
-  if (!editsummary) {
-    editsummary = 'Saving page'
-  }
-
-  // Make all of the requested edits (synchronous since we might make more changes to the page), unless the page is an archive (as there should be no edits made)
-  if (!spiHelperIsThisPageAnArchive) {
+    logMessage += '\n** Updated archivenotice'
     const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
-      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, spiHelperSectionId)
-    if (!editResult) {
-      // Page edit failed (probably an edit conflict), dump the comment if we had one
-      if (comment && comment !== '*') {
-        $('<li>')
-          .append($('<div>').addClass('spihelper-errortext')
-            .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
-          .appendTo($('#spiHelper_status', document))
+      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID)
+    if (editResult) {
+      spiHelperStartingRevID = editResult.edit.newrevid
+    }
+  }
+
+  let sectionCount = await spiHelperGetSectionIDs().length
+  if (!/~~~~/.test(comment)) {
+    comment += ' ~~~~'
+  }
+  for (let index = 0; index < spiHelperSelectedSectionIds.length; index++) {
+    const sectionId = spiHelperSelectedSectionIds[index]
+    const newSectionCount = spiHelperGetSectionIDs().length
+    if (sectionCount !== newSectionCount) {
+      // If total section count has changed since the last spiHelperEditPage call then this is either due to the comment section including a comment
+      // or another editor making an edit to the page. If this is the latter it will be handled by baseRevId in spiHelperEditPage. If it is the former, then all that needs to done
+      // is add the difference to every sectionId left to process (as the cases are worked on from the top down and archiving is done later).
+      // The section IDs that have already been processed will be still fine.
+      spiHelperSelectedSectionIds.forEach((sectionIdToModify, indexForModifyLoop) => {
+        if (index < indexForModifyLoop) {
+          return
+        }
+        spiHelperSelectedSectionIds[indexForModifyLoop] = sectionIdToModify + (newSectionCount - sectionCount)
+      })
+    }
+    let sectionText = await spiHelperGetPageText(spiHelperPageName, true, sectionId)
+    if (!spiHelperCaseModeSelected.all && !spiHelperIsThisPageAnArchive) {
+      let caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
+      if (caseStatusResult === null) {
+        sectionText = sectionText.replace(/^(\s*===.*===[^\S\r\n]*)/, '$1\n{{SPI case status|}}')
+        caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
+      }
+      const oldCaseStatus = caseStatusResult[1] || 'open'
+      if (newCaseStatus === 'noaction') {
+        newCaseStatus = oldCaseStatus
+      }
+
+      if (spiHelperActionsSelected.Case_act && newCaseStatus !== 'noaction' && index === 0) {
+        switch (newCaseStatus) {
+          case 'reopen':
+            newCaseStatus = 'open'
+            editsummary = 'Reopening'
+            break
+          case 'open':
+            editsummary = 'Marking request as open'
+            break
+          case 'CUrequest':
+            editsummary = 'Adding checkuser request'
+            break
+          case 'admin':
+            editsummary = 'Requesting admin action'
+            break
+          case 'clerk':
+            editsummary = 'Requesting clerk action'
+            break
+          case 'selfendorse':
+            newCaseStatus = 'endorse'
+            editsummary = 'Adding checkuser request (self-endorsed for checkuser attention)'
+            break
+          case 'checked':
+            editsummary = 'Marking request as checked'
+            break
+          case 'inprogress':
+            editsummary = 'Marking request in progress'
+            break
+          case 'decline':
+            editsummary = 'Declining checkuser'
+            break
+          case 'cudecline':
+            editsummary = 'CU declining checkuser'
+            break
+          case 'endorse':
+            editsummary = 'Endorsing for checkuser attention'
+            break
+          case 'cuendorse':
+            editsummary = 'CU endorsing for checkuser attention'
+            break
+          case 'moreinfo': // Intentional fallthrough
+          case 'cumoreinfo':
+            editsummary = 'Requesting additional information'
+            break
+          case 'relist':
+            editsummary = 'Relisting case for another check'
+            break
+          case 'hold':
+            editsummary = 'Putting case on hold'
+            break
+          case 'cuhold':
+            editsummary = 'Placing checkuser request on hold'
+            break
+          case 'noaction':
+            // Do nothing
+            break
+          default:
+            console.error('Unexpected case status value ' + newCaseStatus)
+        }
+        logMessage += '\n** changed case status' + (spiHelperCaseModeSelected.some ? 'es' : '') + ' from ' + oldCaseStatus + ' to ' + newCaseStatus
       }
     }
+
+    if (!spiHelperCaseModeSelected.all && comment && comment !== '*' && !spiHelperIsThisPageAnArchive) {
+      if (!sectionText.includes('\n----')) {
+        sectionText.replace('<!--- All comments go ABOVE this line, please. -->', '')
+        sectionText.replace('<!-- All comments go ABOVE this line, please. -->', '')
+        sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
+      }
+      let commentTemp = ''
+      if ((spiHelperCaseModeSelected.single || spiHelperCaseModeSelected.all) || (spiHelperCaseModeSelected.some && ((addCommentToEverySection || index === 0) || (spiHelperSelectedSectionIds.length < 2)))) {
+        commentTemp = comment
+      } else if (spiHelperCaseModeSelected.some && referenceCommentInOtherSections) {
+        commentTemp = '* See the report dated ' + spiHelperSelectedSectionNames[0] + '. ~~~~'
+      } else {
+        // If some mode is selected but neither of the options were selected then only add the comment to the first section (default)
+        commentTemp = false
+      }
+      // Clerks and admins post in the admin section
+      if ((spiHelperIsClerk() || spiHelperIsAdmin()) && commentTemp) {
+        // Complicated regex to find the first regex in the admin section
+        // The weird (\n|.) is because we can't use /s (dot matches newline) regex mode without ES9,
+        // I don't want to go there yet
+        sectionText = sectionText.replace(/\n*----(?!(\n|.)*----)/, '\n' + commentTemp + '\n----')
+      } else if (commentTemp) { // Everyone else posts in the "other users" section
+        sectionText = sectionText.replace(spiHelperAdminSectionWithPrecedingNewlinesRegex,
+          '\n' + commentTemp + '\n====<big>Clerk, CheckUser, and/or patrolling admin comments</big>====\n')
+      }
+      if (index === 0) {
+        if (editsummary) {
+          editsummary += ', comment'
+        } else {
+          editsummary = 'Comment'
+        }
+        logMessage += '\n** commented'
+      }
+    }
+
+    if (spiHelperActionsSelected.Close) {
+      newCaseStatus = 'close'
+      if (index === 0) {
+        if (editsummary) {
+          editsummary += ', marking case' + (spiHelperCaseModeSelected.some ? 's' : '') + ' as closed'
+        } else {
+          editsummary = 'Marking case' + (spiHelperCaseModeSelected.some ? 's' : '') + ' as closed'
+        }
+        logMessage += '\n** closed case' + (spiHelperCaseModeSelected.some ? 's' : '')
+      }
+    }
+    if (!spiHelperCaseModeSelected.all && !spiHelperIsThisPageAnArchive) {
+      const caseStatusText = spiHelperCaseStatusRegex.exec(sectionText)[0]
+      sectionText = sectionText.replace(caseStatusText, '{{SPI case status|' + newCaseStatus + '}}')
+    }
+
+    // Fallback: if we somehow managed to not make an edit summary, add a default one
+    if (!editsummary) {
+      editsummary = 'Saving page'
+    }
+
+    // Make all of the requested edits (synchronous since we might make more changes to the page), unless the page is an archive (as there should be no edits made)
+    sectionCount = newSectionCount
+    if (!spiHelperIsThisPageAnArchive) {
+      const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
+        spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
+      if (!editResult) {
+        // Page edit failed (probably an edit conflict), dump the comment if we had one
+        if (comment && comment !== '*') {
+          $('<li>')
+            .append($('<div>').addClass('spihelper-errortext')
+              .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
+            .appendTo($('#spiHelper_status', document))
+        }
+      }
+      spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
+    }
   }
-  // Update to the latest revision ID
-  spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
+
   if (spiHelperActionsSelected.Archive) {
     // Archive the case
-    if (spiHelperSectionId === null) {
+    if (spiHelperCaseModeSelected.all) {
       // Archive the whole case
       logMessage += '\n** Archived case'
       await spiHelperArchiveCase()
+      await spiHelperArchiveCaseSection(spiHelperSelectedSectionIds[0])
+    } else if (spiHelperCaseModeSelected.single) {
+      logMessage += '\n** Archived case'
     } else {
-      // Just archive the selected section
-      logMessage += '\n** Archived section'
-      await spiHelperArchiveCaseSection(spiHelperSectionId)
+      logMessage += '\n** Archived cases'
+      // Just archive the selected sections
+      let failedAtIndex = spiHelperSelectedSectionIds.length + 1
+      for (let index = 0; index < spiHelperSelectedSectionIds.length; index++) {
+        const sectionId = spiHelperSelectedSectionIds[index]
+        logMessage += '\n** Archived section'
+        const archivetext = await spiHelperGetArchiveTextForCaseSection(sectionId)
+        const postExpandPercent =
+          (await spiHelperGetPostExpandSize(spiHelperPageName, sectionId) +
+          await spiHelperGetPostExpandSize(spiHelperGetArchiveName())) /
+          spiHelperGetMaxPostExpandSize()
+        if (postExpandPercent >= 1) {
+          // We'd overflow the archive, so move it and then archive the current page
+          // Find the first empty archive page
+          let archiveId = 1
+          while (await spiHelperGetPageText(spiHelperGetArchiveName() + '/' + archiveId, false) !== '') {
+            archiveId++
+          }
+          const newArchiveName = spiHelperGetArchiveName() + '/' + archiveId
+          await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false)
+          await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
+        }
+        if (!await spiHelperSaveToArchive(archivetext)) {
+          failedAtIndex = index
+          return false
+        }
+      }
+      for (let index = spiHelperSelectedSectionIds.length - 1; index > 0; index--) { // Reversed because this means that the yet to be processed sectionIDs won't have changed unless a non-tool edit is made in the iterim.
+        const sectionId = spiHelperSelectedSectionIds[index]
+        if (spiHelperSelectedSectionIds.length - index < failedAtIndex) {
+          await spiHelperBlankCaseSection(sectionId)
+        }
+      }
     }
   } else if (spiHelperActionsSelected.Rename && renameTarget) {
-    if (spiHelperSectionId === null) {
+    if (spiHelperCaseModeSelected.all) {
       // Option 1: we selected "All cases," this is a whole-case move/merge
       logMessage += '\n** moved/merged case to ' + renameTarget
       await spiHelperMoveCase(renameTarget)
     } else {
-      // Option 2: this is a single-section case move or merge
-      logMessage += '\n** moved section to ' + renameTarget
-      await spiHelperMoveCaseSection(renameTarget, spiHelperSectionId)
+      // Option 2: this is a single-section(s) case move or merge
+      for (let index = spiHelperSelectedSectionIds.length - 1; index > 0; index--) { // Reversed for the same reason as why it was reversed for the archive code
+        const sectionId = spiHelperSelectedSectionIds[index]
+        logMessage += '\n** moved section to ' + renameTarget
+        await spiHelperMoveCaseSection(renameTarget, sectionId)
+      }
     }
   }
   if (spiHelperSettings.log) {
@@ -1860,6 +2147,35 @@ async function spiHelperArchiveCase () {
  */
 async function spiHelperArchiveCaseSection (sectionId) {
   'use strict'
+  if (await spiHelperSaveToArchive(await spiHelperGetArchiveTextForCaseSection(sectionId))) {
+    // Blank the section we archived
+    await spiHelperBlankCaseSection(sectionId)
+  }
+}
+
+async function spiHelperSaveToArchive (archivetext) {
+  const archiveSuccess = await spiHelperEditPage(spiHelperGetArchiveName(), archivetext,
+    'Archiving case section from [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]',
+    false, spiHelperSettings.watchArchive, spiHelperSettings.watchArchiveExpiry)
+
+  if (!archiveSuccess) {
+    const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+    $statusLine.addClass('spihelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
+    return false
+  }
+  return true
+}
+
+async function spiHelperBlankCaseSection (sectionId) {
+  'use strict'
+  await spiHelperEditPage(spiHelperPageName, '', 'Archiving case section to [[' + spiHelperGetInterwikiPrefix() + spiHelperGetArchiveName() + ']]',
+    false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
+  // Update to the latest revision ID
+  spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
+}
+
+async function spiHelperGetArchiveTextForCaseSection (sectionId) {
+  'use strict'
   let sectionText = await spiHelperGetPageText(spiHelperPageName, true, sectionId)
   sectionText = sectionText.replace(spiHelperCaseStatusRegex, '')
   const newarchivetext = sectionText.substring(sectionText.search(spiHelperSectionRegex))
@@ -1872,21 +2188,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
     archivetext = archivetext.replace(/<br\s*\/>\s*{{SPIpriorcases}}/gi, '\n{{SPIpriorcases}}') // fmt fix whenever needed.
   }
   archivetext += '\n' + newarchivetext
-  const archiveSuccess = await spiHelperEditPage(spiHelperGetArchiveName(), archivetext,
-    'Archiving case section from [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]',
-    false, spiHelperSettings.watchArchive, spiHelperSettings.watchArchiveExpiry)
-
-  if (!archiveSuccess) {
-    const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-    $statusLine.addClass('spihelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
-    return
-  }
-
-  // Blank the section we archived
-  await spiHelperEditPage(spiHelperPageName, '', 'Archiving case section to [[' + spiHelperGetInterwikiPrefix() + spiHelperGetArchiveName() + ']]',
-    false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, sectionId)
-  // Update to the latest revision ID
-  spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
+  return archivetext
 }
 
 /**
@@ -2351,10 +2653,11 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     request.watchlistexpiry = watchExpiry
   }
   try {
-    await api.postWithToken('csrf', request)
+    const response = await api.postWithToken('csrf', request)
     $statusLine.html('Saved ' + $link.prop('outerHTML'))
     spiHelperActiveOperations.set(activeOpKey, 'success')
-    return true
+    // The response should be truthy, so should be fine. newrevid needed by other parts of the code, so the JSON response needs to be returned on success.
+    return response
   } catch (error) {
     $statusLine.addClass('spihelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error)
     console.error(error)
@@ -2760,6 +3063,24 @@ async function spiHelperGetInvestigationSectionIDs () {
   // sections (should all be level-3 headers)
   'use strict'
 
+  const sections = await spiHelperGetSectionIDs()
+  const dateSections = []
+  for (let i = 0; i < sections.length; i++) {
+    // TODO: also check for presence of spi case status
+    if (sections[i].level === '3') {
+      dateSections.push(sections[i])
+    }
+  }
+  return dateSections
+}
+
+/**
+ * Get a list of sections on the sockpuppet investigation page
+ *
+ * @return {Promise<Object[]>} An array of section objects, each section is a separate investigation
+ */
+async function spiHelperGetSectionIDs () {
+  'use strict'
   // Since this only affects the local page, no need to call spiHelper_getAPI()
   const api = new mw.Api()
   const response = await api.get({
@@ -2767,14 +3088,7 @@ async function spiHelperGetInvestigationSectionIDs () {
     prop: 'sections',
     page: spiHelperPageName
   })
-  const dateSections = []
-  for (let i = 0; i < response.parse.sections.length; i++) {
-    // TODO: also check for presence of spi case status
-    if (response.parse.sections[i].level === '3') {
-      dateSections.push(response.parse.sections[i])
-    }
-  }
-  return dateSections
+  return response.parse.sections
 }
 
 /**
@@ -3086,12 +3400,15 @@ async function spiHelperSetCheckboxesBySection () {
   const $topView = $('#spiHelper_topViewDiv', document)
   // Get the value of the selection box
   if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
-    spiHelperSectionId = null
-    spiHelperSectionName = null
+    spiHelperSelectedSectionIds = [null]
+    spiHelperSelectedSectionNames = [null]
+  } else if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
+    spiHelperSelectedSectionIds = [null]
+    spiHelperSelectedSectionNames = [null]
   } else {
-    spiHelperSectionId = parseInt($('#spiHelper_sectionSelect', $topView).val().toString())
+    spiHelperSelectedSectionIds = [parseInt($('#spiHelper_sectionSelect', $topView).val().toString())]
     const $sectionSelect = $('#spiHelper_sectionSelect', $topView)
-    spiHelperSectionName = spiHelperCaseSections[$sectionSelect.prop('selectedIndex')].line
+    spiHelperSelectedSectionNames = [spiHelperCaseSections[$sectionSelect.prop('selectedIndex')].line]
   }
 
   const $warningText = $('#spiHelper_warning', $topView)
@@ -3126,18 +3443,34 @@ async function spiHelperSetCheckboxesBySection () {
     $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
     $warningText.show()
   }
-
-  if (spiHelperSectionId === null) {
+  if ($('#spiHelper_sectionSelect', $topView).val() === 'some') {
+    // Some of the all case options are relevant to "Some sections"
+    $('.spiHelper_singleCaseOnly', $topView).show()
+    // None of the all case options are relevant to "Some sections"
+    $('.spiHelper_allCasesOnly', $topView).hide()
+    // Update the options so that they are plural
+    $('.spiHelper_forSomeCases', $topView).show()
+    $('.spiHelper_notForSomeCases', $topView).hide()
+    // Now work out if to enable/disable Close cases and Archive cases. If all cases are closed, then closed cases cannot be used. If all cases are not closed, then archive cases
+    // cannot be used
+    spiHelperUpdateCaseActions()
+    $('#spiHelper_multipleSectionSelect input', $topView).on('change', () => {
+      spiHelperUpdateCaseActions()
+    })
+  } else if ($('#spiHelper_sectionSelect', $topView).val() === 'all') {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
     // Show inputs only visible in all-case mode
     $('.spiHelper_allCasesOnly', $topView).show()
+    // Update the options so that they are plural
+    $('.spiHelper_forSomeCases', $topView).hide()
+    $('.spiHelper_notForSomeCases', $topView).show()
     // Fix the move label
     $('#spiHelper_moveLabel', $topView).text('Move/merge full case (Clerk only)')
     // enable the move box
     $moveBox.prop('disabled', false)
   } else {
-    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSelectedSectionIds[0])
     if (!spiHelperSectionRegex.test(sectionText)) {
       // Nothing to do here.
       return
@@ -3153,7 +3486,7 @@ async function spiHelperSetCheckboxesBySection () {
     if (result) {
       casestatus = result[1]
     } else if (!spiHelperIsThisPageAnArchive) {
-      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[0]}!`))
       $warningText.show()
     }
 
@@ -3180,13 +3513,75 @@ async function spiHelperSetCheckboxesBySection () {
     }
 
     // Change the label on the rename button
-    $('#spiHelper_moveLabel', $topView).html('Move case section (<span title="You probably want to move the full case, ' +
+    $('#spiHelper_moveLabel', $topView).html('Move case section<span class="spiHelper_forSomeCases">s</span> (<span title="You probably want to move the full case, ' +
       'select All Sections instead of a specific date in the drop-down"' +
       'class="rt-commentedText spihelper-hovertext"><b>READ ME FIRST</b></span>)')
+
+    // Update the options so that they are not plural
+    $('.spiHelper_forSomeCases', $topView).hide()
+    $('.spiHelper_notForSomeCases', $topView).show()
   }
   // Only show options suitable for the archive subpage when running on the archives
   if (spiHelperIsThisPageAnArchive) {
     $('.spiHelper_notOnArchive', $topView).hide()
+  }
+}
+
+async function spiHelperUpdateCaseActions () {
+  const $topView = $('#spiHelper_topViewDiv', document)
+  const $multipleSectionSelect = $('#spiHelper_multipleSectionSelect', $topView)
+  const $warningText = $('#spiHelper_warning', $topView)
+  $warningText.show()
+  $('#spiHelper_multipleSectionSelect', $topView).find('input').prop('disabled', false)
+  const selectedSectionIds = $multipleSectionSelect.find('input').filter((index, element) => { return $(element).prop('checked') }).map((index, element) => { return $(element).val() }).get()
+  console.log(selectedSectionIds)
+  const $archiveBox = $('#spiHelper_Archive', $topView)
+  const $closeBox = $('#spiHelper_Close', $topView)
+  $archiveBox.prop('disabled', true)
+  $closeBox.prop('disabled', true)
+  if (selectedSectionIds.length === 0) {
+    $('#spiHelper_BlockTag, #spiHelper_Comment, #spiHelper_Move, #spiHelper_Case_Action', $topView).prop('disabled', true)
+  } else {
+    $('#spiHelper_BlockTag, #spiHelper_Comment, #spiHelper_Case_Action', $topView).prop('disabled', false)
+    if (spiHelperSettings.iUnderstandSectionMoves) {
+      $('#spiHelper_Move', $topView).prop('disabled', false)
+    }
+  }
+  for (let i = 0; i < spiHelperCaseSections.length; i++) {
+    const s = spiHelperCaseSections[i]
+    if (selectedSectionIds.indexOf(s.index) < 0) {
+      // Only look at selected section IDs
+      continue
+    }
+    const sectionText = await spiHelperGetPageText(spiHelperPageName, false, s.index)
+    if (!spiHelperSectionRegex.test(sectionText)) {
+      // Nothing to do here.
+      continue
+    }
+    const result = spiHelperCaseStatusRegex.exec(sectionText)
+    let casestatus = ''
+    if (result) {
+      casestatus = result[1]
+    } else if (!spiHelperIsThisPageAnArchive) {
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSelectedSectionNames[selectedSectionIds.indexOf(s.index)]}!`))
+      $warningText.show()
+      continue
+    }
+
+    const isClosed = spiHelperCaseClosedRegex.test(casestatus)
+
+    if ((!$archiveBox.prop('disabled') && !isClosed) || (!$closeBox.prop('disabled') && isClosed)) {
+      $multipleSectionSelect.find('input').each(function (element) {
+        if ($(element).val() === s.index) {
+          $(element).prop('disabled', true)
+        }
+      })
+    } else if (isClosed && $archiveBox.prop('disabled')) {
+      $archiveBox.prop('disabled', false)
+      $archiveBox.prop('checked', true)
+    } else if (!isClosed && $closeBox.prop('disabled')) {
+      $closeBox.prop('disabled', false)
+    }
   }
 }
 
@@ -3309,7 +3704,9 @@ function spiHelperInsertNote (source) {
 }
 
 /**
- * Changes the case status in the comment box
+ * Changes the case status in the comment box and
+ * if 'some' mode is enabled disables checkboxes for sections which cannot have their
+ * status changed to this value.
  *
  * @param {JQuery<HTMLElement>} source Select box that was changed
  */
