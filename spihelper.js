@@ -1340,7 +1340,11 @@ async function spiHelperPerformActions () {
           if (blockEntry.ntp) {
             newText += '|notalk=yes'
           }
-          newText += '|sig=yes'
+          if (spiHelperIsCheckuser() && cuBlock && spiHelperSettings.useCheckuserblockAccount) {
+            newText += '|sig=~~~~'
+          } else {
+            newText += '|sig=yes'
+          }
           if (isSock) {
             newText += '|master=' + sockmaster
           }
