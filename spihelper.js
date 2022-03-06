@@ -81,6 +81,8 @@ const spiHelperSettings = {
   iUnderstandSectionMoves: false,
   // Automatically tick the "Archive case" option if the case is closed
   tickArchiveWhenCaseClosed: true,
+  // Use checkuserblock-account when CU blocking. False when not a CU, by default true when a CU
+  useCheckuserblockAccount: spiHelperIsCheckuser(),
   // These are for debugging to view as other roles. If you're picking apart the code and
   // decide to set these (especially the CU option), it is YOUR responsibility to make sure
   // you don't do something that violates policy
@@ -89,8 +91,7 @@ const spiHelperSettings = {
 }
 
 // Valid options for spiHelperSettings. Prevents invalid setting options being specified in the spioptions user subpage.
-// This method only works options with discrete possible values. As such the expiry options will need to be accomodated for in spiHelperLoadSettings() via a check
-// that validates it is a valid expiry option.
+// This method only works options with discrete possible values. Settings without discrete possible values are checked for in spiHelperLoadSettings().
 const spiHelperValidSettings = {
   watchCase: ['preferences', 'watch', 'nochange', 'unwatch'],
   watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
@@ -102,10 +103,12 @@ const spiHelperValidSettings = {
   reversed_log: [true, false],
   iUnderstandSectionMoves: [true, false],
   tickArchiveWhenCaseClosed: [true, false],
+  useCheckuserblockAccount: [true, false],
   debugForceCheckuserState: [null, true, false],
   debugForceAdminState: [null, true, false]
 }
 
+// These user settings must be a valid date as defined by MediaWiki API. This is checked for in spiHelperValidateDate() via spiHelperLoadSettings()
 const spiHelperSettingsNeedingValidDate = [
   'watchCaseExpiry',
   'watchArchiveExpiry',
@@ -1323,7 +1326,12 @@ async function spiHelperPerformActions () {
           } else {
             newText = '== Blocked for sockpuppetry ==\n'
           }
-          newText += '{{subst:uw-sockblock|spi=' + spiHelperCaseName
+          if (spiHelperIsCheckuser() && cuBlock && spiHelperSettings.useCheckuserblockAccount) {
+            newText += '{{checkuserblock-account'
+          } else {
+            newText += '{{subst:uw-sockblock'
+          }
+          newText += '|spi=' + spiHelperCaseName
           if (blockEntry.duration === 'indefinite' || blockEntry.duration === 'infinity') {
             newText += '|indef=yes'
           } else {
