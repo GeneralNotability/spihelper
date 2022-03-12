@@ -2879,7 +2879,7 @@ async function spiHelperProtectPage (casePageName, protections) {
     await api.postWithToken('csrf', {
       action: 'protect',
       format: 'json',
-      titles: casePageName,
+      title: casePageName,
       protections: protectlevelinfo,
       expiry: expiryinfo,
       reason: 'Restoring protection after history merge'
