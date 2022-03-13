@@ -82,13 +82,16 @@ const spiHelperSettings = {
   // Automatically tick the "Archive case" option if the case is closed
   tickArchiveWhenCaseClosed: true,
   // Use checkuserblock-account when CU blocking. False when not a CU, by default true when a CU
-  useCheckuserblockAccount: spiHelperIsCheckuser(),
+  useCheckuserblockAccount: false,
   // These are for debugging to view as other roles. If you're picking apart the code and
   // decide to set these (especially the CU option), it is YOUR responsibility to make sure
   // you don't do something that violates policy
   debugForceCheckuserState: null,
   debugForceAdminState: null
 }
+
+// Can't set in the spiHelperSettings declaration because spiHelperIsCheckuser itself uses the settings var
+spiHelperSettings.useCheckuserblockAccount = spiHelperIsCheckuser()
 
 // Valid options for spiHelperSettings. Prevents invalid setting options being specified in the spioptions user subpage.
 // This method only works options with discrete possible values. Settings without discrete possible values are checked for in spiHelperLoadSettings().
