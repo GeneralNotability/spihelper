@@ -2396,7 +2396,7 @@ async function spiHelperGetInvestigationSectionIDs () {
   const dateSections = []
   for (let i = 0; i < response.parse.sections.length; i++) {
     // TODO: also check for presence of spi case status
-    if (response.parse.sections[i].level === '3') {
+    if (parseInt(response.parse.sections[i].level) === 3) {
       dateSections.push(response.parse.sections[i])
     }
   }
