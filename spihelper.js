@@ -1849,7 +1849,7 @@ async function spiHelperArchiveCase () {
           archiveId++
         }
         const newArchiveName = spiHelperGetArchiveName() + '/' + archiveId
-        await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false)
+        await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false, false)
         await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
       }
       // Need an await here - if we have multiple sections archiving we don't want
@@ -2380,10 +2380,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
  * @param {string} summary Edit summary to use for the move
  * @param {boolean} ignoreWarnings Whether to ignore warnings on move (used to force-move one page over another)
  */
-async function spiHelperMovePage (sourcePage, destPage, summary, ignoreWarnings) {
-  // Move a page from sourcePage to destPage. Not that complicated.
-  'use strict'
-
+async function spiHelperMovePage (sourcePage, destPage, summary, ignoreWarnings, moveSubpages = true) {
   const activeOpKey = 'move_' + sourcePage + '_' + destPage
   spiHelperActiveOperations.set(activeOpKey, 'running')
 
@@ -2403,7 +2400,7 @@ async function spiHelperMovePage (sourcePage, destPage, summary, ignoreWarnings)
       to: destPage,
       reason: summary + spihelperAdvert,
       noredirect: false,
-      movesubpages: true,
+      movesubpages: moveSubpages,
       ignoreWarnings: ignoreWarnings
     })
     $statusLine.html('Moved ' + $sourceLink.prop('outerHTML') + ' to ' + $destLink.prop('outerHTML'))
