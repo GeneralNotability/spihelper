@@ -753,29 +753,16 @@ async function spiHelperGenerateForm () {
   }
   if (spiHelperActionsSelected.Block || spiHelperActionsSelected.Link) {
     // eslint-disable-next-line no-useless-escape
-    const checkuserRegex = /{{\s*check(?:user|ip)\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*(?:\|master name\s*=\s*.*)?}}/gi
-    const results = pagetext.match(checkuserRegex)
     const likelyusers = []
     const likelyips = []
     const possibleusers = []
     const possibleips = []
     likelyusers.push(spiHelperCaseName)
-    if (results) {
-      for (let i = 0; i < results.length; i++) {
-        const username = spiHelperNormalizeUsername(results[i].replace(checkuserRegex, '$1'))
-        const isIP = mw.util.isIPAddress(username, true)
-        if (!isIP && !likelyusers.includes(username)) {
-          likelyusers.push(username)
-        } else if (isIP && !likelyips.includes(username)) {
-          likelyips.push(username)
-        }
-      }
-    }
     const unnamedParameterRegex = /^\s*\d+\s*$/i
-    const socklistResults = pagetext.match(/{{\s*sock\s?list\s*([^}]*)}}/gi)
+    const socklistResults = pagetext.match(/{{\s*(sock\s?list|checkuser)\s*([^}]*)}}/gi)
     if (socklistResults) {
       for (let i = 0; i < socklistResults.length; i++) {
-        const socklistMatch = socklistResults[i].match(/{{\s*sock\s?list\s*([^}]*)}}/i)[1]
+        const socklistMatch = socklistResults[i].match(/{{\s*(sock\s?list|checkuser)\s*([^}]*)}}/i)[1]
         // First split the text into parts based on the presence of a |
         const socklistArguments = socklistMatch.split('|')
         for (let j = 0; j < socklistArguments.length; j++) {
