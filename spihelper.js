@@ -1329,7 +1329,8 @@ async function spiHelperPerformActions () {
           } else {
             newText = '== Blocked for sockpuppetry ==\n'
           }
-          if (spiHelperIsCheckuser() && cuBlock && spiHelperSettings.useCheckuserblockAccount) {
+          const isCheckUserBlockAccount = spiHelperIsCheckuser() && cuBlock && spiHelperSettings.useCheckuserblockAccount
+          if (isCheckUserBlockAccount) {
             newText += '{{checkuserblock-account|sig=~~~~'
           } else {
             newText += '{{subst:uw-sockblock|sig=yes'
@@ -1338,7 +1339,10 @@ async function spiHelperPerformActions () {
           if (blockEntry.duration === 'indefinite' || blockEntry.duration === 'infinity') {
             newText += '|indef=yes'
           } else {
-            newText += '|duration=' + blockEntry.duration
+            newText += '|time=' + blockEntry.duration
+            if (isCheckUserBlockAccount) {
+              newText += '|indef=no'
+            }
           }
           if (blockEntry.ntp) {
             newText += '|notalk=yes'
