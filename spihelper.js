@@ -268,7 +268,7 @@ const spiHelperHiddenCharNormRegex = /\u200E/g
 /* Other globals */
 
 /** @type{string} Advert to append to the edit summary of edits */
-const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
+const spihelperAdvert = ' (using [[:w:en:WP:SPIH|spihelper.js]])'
 
 /* Used by the link view */
 const spiHelperLinkViewURLFormats = {
