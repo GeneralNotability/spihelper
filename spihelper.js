@@ -1015,13 +1015,14 @@ async function spiHelperPerformActions () {
       const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked')
       for (let i = 1; i <= spiHelperBlockTableUserCount; i++) {
         if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
-          if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
+          const usernameValue = $('#spiHelper_block_username' + i, $actionView).val();
+          if (!usernameValue) {
             // Skip blank usernames, empty string is falsey
             continue
           }
           let noticetype = ''
 
-          const username = spiHelperNormalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString())
+          const username = spiHelperNormalizeUsername(usernameValue.toString())
 
           if (masterNotice && ($('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master') ||
                 spiHelperNormalizeUsername(spiHelperCaseName) === username)) {
