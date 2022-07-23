@@ -1015,7 +1015,7 @@ async function spiHelperPerformActions () {
       const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked')
       for (let i = 1; i <= spiHelperBlockTableUserCount; i++) {
         if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
-          const usernameValue = $('#spiHelper_block_username' + i, $actionView).val();
+          const usernameValue = $('#spiHelper_block_username' + i, $actionView).val()
           if (!usernameValue) {
             // Skip blank usernames, empty string is falsey
             continue
