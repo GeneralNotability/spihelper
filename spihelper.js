@@ -1,7 +1,8 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// v2.7.1 "Counting forks"
+// With contributions from Dreamy Jazz, L235, Tamzin, TheresNoTime, and Xiplus
+// v2.8.1 "Cabal Decree"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
 
@@ -51,8 +52,11 @@ importScript('User:Timotheus Canens/displaymessage.js')
   */
 
 // Globals
+
+/* User setting related globals */
+
 // User-configurable settings, these are the defaults but will be updated by
-// spiHelper_loadSettings()
+// spiHelperLoadSettings()
 const spiHelperSettings = {
   // Choices are 'watch' (unconditionally add to watchlist), 'preferences'
   // (follow default preferences), 'nochange' (don't change the watchlist
@@ -75,12 +79,48 @@ const spiHelperSettings = {
   reversed_log: false,
   // Enable the "move section" button
   iUnderstandSectionMoves: false,
+  // Automatically tick the "Archive case" option if the case is closed
+  tickArchiveWhenCaseClosed: true,
+  // Use checkuserblock-account when CU blocking. False when not a CU, by default true when a CU
+  useCheckuserblockAccount: false,
   // These are for debugging to view as other roles. If you're picking apart the code and
   // decide to set these (especially the CU option), it is YOUR responsibility to make sure
   // you don't do something that violates policy
   debugForceCheckuserState: null,
   debugForceAdminState: null
 }
+
+// Can't set in the spiHelperSettings declaration because spiHelperIsCheckuser itself uses the settings var
+spiHelperSettings.useCheckuserblockAccount = spiHelperIsCheckuser()
+
+// Valid options for spiHelperSettings. Prevents invalid setting options being specified in the spioptions user subpage.
+// This method only works options with discrete possible values. Settings without discrete possible values are checked for in spiHelperLoadSettings().
+const spiHelperValidSettings = {
+  watchCase: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchTaggedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchNewCats: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchBlockedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+  clerk: [true, false],
+  log: [true, false],
+  reversed_log: [true, false],
+  iUnderstandSectionMoves: [true, false],
+  tickArchiveWhenCaseClosed: [true, false],
+  useCheckuserblockAccount: [true, false],
+  debugForceCheckuserState: [null, true, false],
+  debugForceAdminState: [null, true, false]
+}
+
+// These user settings must be a valid date as defined by MediaWiki API. This is checked for in spiHelperValidateDate() via spiHelperLoadSettings()
+const spiHelperSettingsNeedingValidDate = [
+  'watchCaseExpiry',
+  'watchArchiveExpiry',
+  'watchTaggedUserExpiry',
+  'watchNewCatsExpiry',
+  'watchBlockedUserExpiry'
+]
+
+/* Globals to describe the current SPI page */
 
 /** @type {string} Name of the SPI page in wiki title form
  * (e.g. Wikipedia:Sockpuppet investigations/Test) */
@@ -91,8 +131,16 @@ let spiHelperPageName = mw.config.get('wgPageName').replace(/_/g, ' ')
  */
 let spiHelperStartingRevID = mw.config.get('wgCurRevisionId')
 
-// Just the username part of the case
-let spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+const spiHelperIsThisPageAnArchive = mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')
+
+/** @type {string} Just the username part of the case */
+let spiHelperCaseName
+
+if (spiHelperIsThisPageAnArchive) {
+  spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '').replace(/\/Archive/, '')
+} else {
+  spiHelperCaseName = spiHelperPageName.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+}
 
 /** list of section IDs + names corresponding to separate investigations */
 let spiHelperCaseSections = []
@@ -110,6 +158,7 @@ let spiHelperArchiveNoticeParams
 const spiHelperActionsSelected = {
   Case_act: false,
   Block: false,
+  Links: false,
   Note: false,
   Close: false,
   Rename: false,
@@ -126,9 +175,19 @@ const spiHelperTags = []
 /** @type {string[]} Requested global locks */
 const spiHelperGlobalLocks = []
 
-// Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page)
-let spiHelperUserCount = 0
-const spiHelperSectionRegex = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m
+// Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page) for the block view
+let spiHelperBlockTableUserCount = 0
+// Count of unique users in the case (anything with a checkuser, checkip, user, ip, or vandal template on the page) for the link view (seperate needed as extra rows can be added)
+let spiHelperLinkTableUserCount = 0
+
+// The current wiki's interwiki prefix
+const spiHelperInterwikiPrefix = spiHelperGetInterwikiPrefix()
+
+// Map of active operations (used as a "dirty" flag for beforeunload)
+// Values are strings representing the state - acceptable values are 'running', 'success', 'failed'
+const spiHelperActiveOperations = new Map()
+
+/* Globals to describe possible options for dropdown menus */
 
 /** @type {SelectOption[]} List of possible selections for tagging a user in the block/tag interface
  */
@@ -176,9 +235,12 @@ const spiHelperAdminTemplates = [
   { label: 'Blocked, no tags', selected: false, value: '{{bwt}}' },
   { label: 'Blocked, awaiting tags', selected: false, value: '{{sblock}}' },
   { label: 'Blocked, tagged, closed', selected: false, value: '{{btc}}' },
+  { label: 'Requested actions completed, closing', selected: false, value: '{{Action and close}}' },
   { label: 'Diffs needed', selected: false, value: '{{DiffsNeeded|moreinfo}}' },
   { label: 'Locks requested', selected: false, value: '{{GlobalLocksRequested}}' }
 ]
+
+/* Globals for regexes */
 
 // Regex to match the case status, group 1 is the actual status
 const spiHelperCaseStatusRegex = /{{\s*SPI case status\s*\|?\s*(\S*?)\s*}}/i
@@ -197,23 +259,30 @@ const spiHelperArchiveNoticeRegex = /{{\s*SPI\s*archive notice\|(?:1=)?([^|]*?)(
 
 const spiHelperPriorCasesRegex = /{{spipriorcases}}/i
 
+const spiHelperSectionRegex = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m
+
 // regex to remove hidden characters from form inputs - they mess up some things,
 // especially mw.util.isIP
 const spiHelperHiddenCharNormRegex = /\u200E/g
 
-const spihelperAdvert = ' (using [[:w:en:User:GeneralNotability/spihelper|spihelper.js]])'
+/* Other globals */
 
-// The current wiki's interwiki prefix
-const spiHelperInterwikiPrefix = spiHelperGetInterwikiPrefix()
+/** @type{string} Advert to append to the edit summary of edits */
+const spihelperAdvert = ' (using [[:w:en:WP:SPIH|spihelper.js]])'
 
-// Map of active operations (used as a "dirty" flag for beforeunload)
-// Values are strings representing the state - acceptable values are 'running', 'success', 'failed'
-const spiHelperActiveOperations = new Map()
+/* Used by the link view */
+const spiHelperLinkViewURLFormats = {
+  editorInteractionAnalyser: { baseurl: 'https://sigma.toolforge.org/editorinteract.py', appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Editor Interaction Anaylser' },
+  interactionTimeline: { baseurl: 'https://interaction-timeline.toolforge.org/', appendToQueryString: 'wiki=enwiki', userQueryStringKey: 'user', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Interaction Timeline' },
+  timecardSPITools: { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Timecard comparisons' },
+  consolidatedTimelineSPITools: { baseurl: 'https://spi-tools.toolforge.org/spi/timecard/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'Consolidated Timeline (requires login)' },
+  pagesSPITools: { baseurl: 'https://spi-tools.toolforge.org/spi/timeline/' + spiHelperCaseName, appendToQueryString: '', userQueryStringKey: 'users', userQueryStringSeparator: '&', userQueryStringWrapper: '', multipleUserQueryStringKeys: true, name: 'SPI Tools Pages (requires login)' },
+  checkUserWikiSearch: { baseurl: 'https://checkuser.wikimedia.org/w/index.php', appendToQueryString: 'ns0=1', userQueryStringKey: 'search', userQueryStringSeparator: ' OR ', userQueryStringWrapper: '"', multipleUserQueryStringKeys: false, name: 'Checkuser wiki search' }
+}
 
-// Actually put the portlets in place if needed
+/* Actually put the portlets in place if needed */
 if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/') &&
-  !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/') &&
-  !mw.config.get('wgPageName').match('Wikipedia:Sockpuppet_investigations/.*/Archive.*')) {
+  !mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/SPI/')) {
   mw.loader.load('mediawiki.user')
   $(spiHelperAddLink)
 }
@@ -224,13 +293,13 @@ const spiHelperTopViewHTML = `
 <div id="spiHelper_topViewDiv">
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
-  <h4 id="spiHelper_warning" class="spiHelper-errortext" hidden></h4>
+  <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
   <ul>
-    <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly">
+    <li id="spiHelper_actionLine"  class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Case_Action" id="spiHelper_Case_Action" />
       <label for="spiHelper_Case_Action">Change case status</label>
     </li>
-    <li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly">
+    <li id="spiHelper_spiMgmtLine"  class="spiHelper_allCasesOnly spiHelper_notOnArchive">
       <input type="checkbox" id="spiHelper_SpiMgmt" />
       <label for="spiHelper_SpiMgmt">Change SPI options</label>
     </li>
@@ -238,24 +307,28 @@ const spiHelperTopViewHTML = `
       <input type="checkbox" name="spiHelper_BlockTag" id="spiHelper_BlockTag" />
       <label for="spiHelper_BlockTag">Block/tag socks</label>
     </li>
-    <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly">
+    <li id="spiHelper_userInfoLine" class="spiHelper_singleCaseOnly">
+      <input type="checkbox" name="spiHelper_userInfo" id="spiHelper_userInfo" />
+      <label for="spiHelper_userInfo">Sock links</label>
+    </li>
+    <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
       <label for="spiHelper_Comment">Note/comment</label>
-      </li>
-    <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly">
-      <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close")" />
+    </li>
+    <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
+      <input type="checkbox" name="spiHelper_Close" id="spiHelper_Close" />
       <label for="spiHelper_Close">Close case</label>
     </li>
-    <li id="spiHelper_moveLine" class="spiHelper_clerkClass">
+    <li id="spiHelper_moveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Move" id="spiHelper_Move" />
       <label for="spiHelper_Move" id="spiHelper_moveLabel">Move/merge full case (Clerk only)</label>
     </li>
-    <li id="spiHelper_archiveLine" class="spiHelper_clerkClass">
+    <li id="spiHelper_archiveLine" class="spiHelper_clerkClass spiHelper_notOnArchive">
       <input type="checkbox" name="spiHelper_Archive" id="spiHelper_Archive"/>
       <label for="spiHelper_Archive">Archive case (Clerk only)</label>
     </li>
   </ul>
-  <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" onclick="spiHelperGenerateForm()" />
+  <input type="button" id="spiHelper_GenerateForm" name="spiHelper_GenerateForm" value="Continue" />
 </div>
 `
 
@@ -267,13 +340,30 @@ async function spiHelperInit () {
   spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
 
   // Load archivenotice params
-  spiHelperArchiveNoticeParams = await spiHelperParseArchiveNotice(spiHelperPageName)
+  spiHelperArchiveNoticeParams = await spiHelperParseArchiveNotice(spiHelperPageName.replace(/\/Archive/, ''))
 
   // First, insert the template text
   displayMessage(spiHelperTopViewHTML)
 
   // Narrow search scope
   const $topView = $('#spiHelper_topViewDiv', document)
+
+  if (spiHelperArchiveNoticeParams.username === null) {
+    // No archive notice was found
+    const $warningText = $('#spiHelper_warning', $topView)
+    $warningText.show()
+    $warningText.append($('<b>').text('Can\'t find archivenotice template! Automatically adding the archive notice to the page.'))
+    const newArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, { xwiki: false, deny: false, notalk: false })
+    let pagetext = await spiHelperGetPageText(spiHelperPageName, false)
+    if (spiHelperPriorCasesRegex.exec(pagetext) === null) {
+      pagetext = '{{SPIpriorcases}}\n' + pagetext
+    }
+    pagetext = newArchiveNotice + '\n' + pagetext
+    if (pagetext.indexOf('__TOC__') === -1) {
+      pagetext = '<noinclude>__TOC__</noinclude>\n' + pagetext
+    }
+    await spiHelperEditPage(spiHelperPageName, pagetext, 'Adding archive notice', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+  }
 
   // Next, modify what's displayed
   // Set the block selection label based on whether or not the user is an admin
@@ -301,18 +391,18 @@ async function spiHelperInit () {
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
-  // Hide block and close from non-admin non-clerks
-  if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $topView).hide()
-  }
+  updateForRole($topView)
 
-  // Hide move and archive from non-clerks
-  if (!spiHelperIsClerk()) {
-    $('.spiHelper_clerkClass', $topView).hide()
+  // Only show options suitable for the archive subpage when running on the archives
+  if (spiHelperIsThisPageAnArchive) {
+    $('.spiHelper_notOnArchive', $topView).hide()
   }
-
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
+
+  $('#spiHelper_GenerateForm', $topView).one('click', () => {
+    spiHelperGenerateForm()
+  })
 }
 
 const spiHelperActionViewHTML = `
@@ -342,16 +432,44 @@ const spiHelperActionViewHTML = `
       </li>
     </ul>
   </div>
+  <div id="spiHelper_sockLinksView">
+    <h4 id="spiHelper_sockLinksHeader">Useful links for socks</h4>
+    <table id="spiHelper_userInfoTable" style="border-collapse:collapse;">
+      <tr>
+        <th>Username</th>
+        <th><span title="Editor interaction analyser" class="rt-commentedText spihelper-hovertext">Interaction analyser</span></th>
+        <th><span title="Interaction timeline" class="rt-commentedText spihelper-hovertext">Interaction timeline</span></th>
+        <th><span title="Timecard comparison - SPI tools" class="rt-commentedText spihelper-hovertext">Timecard</span></th>
+        <th class="spiHelper_adminClass"><span title="Consolidated timeline (login needed) - SPI tools" class="rt-commentedText spihelper-hovertext">Consolidated timeline</span></th>
+        <th class="spiHelper_adminClass"><span title="Pages - SPI tools (login needed)" class="rt-commentedText spihelper-hovertext">Pages</span></th>
+        <th class="spiHelper_cuClass"><span title="CheckUser wiki search" class="rt-commentedText spihelper-hovertext">CU wiki</span></th>
+      </tr>
+      <tr style="border-bottom:2px solid black">
+        <td style="text-align:center;">(All users)</td>
+        <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_editorInteractionAnalyser"/></td>
+        <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_interactionTimeline"/></td>
+        <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_timecardSPITools"/></td>
+        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_consolidatedTimelineSPITools"/></td>
+        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_pagesSPITools"/></td>
+        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
+      </tr>
+    </table>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
+  </div>
   <div id="spiHelper_blockTagView">
     <h4 id="spiHelper_blockTagHeader">Blocking and tagging socks</h4>
     <ul>
       <li class="spiHelper_adminClass">
         <input type="checkbox" name="spiHelper_noblock" id="spiHelper_noblock" />
-        <label for="spiHelper_noblock">Do not make any blocks (this overrides the individual "Blk" boxes below)</label>
+        <label for="spiHelper_noblock">Do not make any blocks (this overrides the individual "Blk" boxes below).</label>
       </li>
       <li class="spiHelper_adminClass">
         <input type="checkbox" name="spiHelper_override" id="spiHelper_override" />
-        <label for="spiHelper_override">Override any existing blocks</label>
+        <label for="spiHelper_override">Override any existing blocks.</label>
+      </li>
+      <li class="spiHelper_clerkClass">
+        <input type="checkbox" checked="checked" name="spiHelper_tagAccountsWithoutLocalAccount" id="spiHelper_tagAccountsWithoutLocalAccount" />
+        <label for="spiHelper_tagAccountsWithoutLocalAccount">Tag accounts without an attached local account.</label>
       </li>
       <li class="spiHelper_cuClass">
         <input type="checkbox" name="spiHelper_cublock" id="spiHelper_cublock" />
@@ -407,7 +525,7 @@ const spiHelperActionViewHTML = `
         <td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
       </tr>
     </table>
-    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine();"/></span>
+    <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
   </div>
   <div id="spiHelper_closeView">
     <h4>Marking case as closed</h4>
@@ -452,10 +570,12 @@ const spiHelperActionViewHTML = `
 // eslint-disable-next-line no-unused-vars
 async function spiHelperGenerateForm () {
   'use strict'
-  spiHelperUserCount = 0
+  spiHelperBlockTableUserCount = 0
+  spiHelperLinkTableUserCount = 0
   const $topView = $('#spiHelper_topViewDiv', document)
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
+  spiHelperActionsSelected.Link = $('#spiHelper_userInfo', $topView).prop('checked')
   spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
   spiHelperActionsSelected.Close = $('#spiHelper_Close', $topView).prop('checked')
   spiHelperActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked')
@@ -464,7 +584,7 @@ async function spiHelperGenerateForm () {
   const pagetext = await spiHelperGetPageText(spiHelperPageName, false, spiHelperSectionId)
   if (!(spiHelperActionsSelected.Case_act ||
     spiHelperActionsSelected.Note || spiHelperActionsSelected.Close ||
-    spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block ||
+    spiHelperActionsSelected.Archive || spiHelperActionsSelected.Block || spiHelperActionsSelected.Link ||
     spiHelperActionsSelected.Rename || spiHelperActionsSelected.SpiMgmt)) {
     displayMessage('')
     return
@@ -476,7 +596,7 @@ async function spiHelperGenerateForm () {
   const $actionView = $('#spiHelper_actionViewDiv', document)
 
   // Wire up the action view
-  $('#spiHelper_backLink', $actionView).on('click', () => {
+  $('#spiHelper_backLink', $actionView).one('click', () => {
     spiHelperInit()
   })
   if (spiHelperActionsSelected.Case_act) {
@@ -579,12 +699,59 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_spiMgmtView', $actionView).hide()
   }
 
-  if (spiHelperActionsSelected.Block) {
-    if (spiHelperIsAdmin()) {
-      $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
-    } else {
-      $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
+  if (!spiHelperActionsSelected.Close) {
+    $('#spiHelper_closeView', $actionView).hide()
+  }
+  if (!spiHelperActionsSelected.Archive) {
+    $('#spiHelper_archiveView', $actionView).hide()
+  }
+  // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
+  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
+    // generate the note prefixes
+    /** @type {SelectOption[]} */
+    const spiHelperNoteTemplates = [
+      { label: 'Comment templates', selected: true, value: '', disabled: true }
+    ]
+    if (spiHelperIsClerk()) {
+      spiHelperNoteTemplates.push({ label: 'Clerk note', selected: false, value: 'clerknote' })
     }
+    if (spiHelperIsAdmin()) {
+      spiHelperNoteTemplates.push({ label: 'Administrator note', selected: false, value: 'adminnote' })
+    }
+    if (spiHelperIsCheckuser()) {
+      spiHelperNoteTemplates.push({ label: 'CU note', selected: false, value: 'cunote' })
+    }
+    spiHelperNoteTemplates.push({ label: 'Note', selected: false, value: 'takenote' })
+
+    // Wire up the select boxes
+    spiHelperGenerateSelect('spiHelper_noteSelect', spiHelperNoteTemplates)
+    $('#spiHelper_noteSelect', $actionView).on('change', function (e) {
+      spiHelperInsertNote($(e.target))
+    })
+    spiHelperGenerateSelect('spiHelper_adminSelect', spiHelperAdminTemplates)
+    $('#spiHelper_adminSelect', $actionView).on('change', function (e) {
+      spiHelperInsertTextFromSelect($(e.target))
+    })
+    spiHelperGenerateSelect('spiHelper_cuSelect', spiHelperCUTemplates)
+    $('#spiHelper_cuSelect', $actionView).on('change', function (e) {
+      spiHelperInsertTextFromSelect($(e.target))
+    })
+    $('#spiHelper_previewLink', $actionView).on('click', function () {
+      spiHelperPreviewText()
+    })
+  } else {
+    $('#spiHelper_commentView', $actionView).hide()
+  }
+  if (spiHelperActionsSelected.Rename) {
+    if (spiHelperSectionId) {
+      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
+    } else {
+      $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
+    }
+  } else {
+    $('#spiHelper_moveView', $actionView).hide()
+  }
+  if (spiHelperActionsSelected.Block || spiHelperActionsSelected.Link) {
     // eslint-disable-next-line no-useless-escape
     const checkuserRegex = /{{\s*check(?:user|ip)\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*(?:\|master name\s*=\s*.*)?}}/gi
     const results = pagetext.match(checkuserRegex)
@@ -621,9 +788,10 @@ async function spiHelperGenerateForm () {
             username = spiHelperNormalizeUsername(splitArgument.slice(1).join('='))
           }
           if (username !== '') {
-            if (mw.util.isIPAddress(username, true) && !likelyips.includes(username)) {
-              likelyusers.push(username)
-            } else if (!likelyusers.includes(username)) {
+            const isIP = mw.util.isIPAddress(username, true)
+            if (isIP && !likelyips.includes(username)) {
+              likelyips.push(username)
+            } else if (!isIP && !likelyusers.includes(username)) {
               likelyusers.push(username)
             }
           }
@@ -636,143 +804,144 @@ async function spiHelperGenerateForm () {
     if (userresults) {
       for (let i = 0; i < userresults.length; i++) {
         const username = spiHelperNormalizeUsername(userresults[i].replace(userRegex, '$1'))
-        if (mw.util.isIPAddress(username, true) && !possibleips.includes(username) &&
+        const isIP = mw.util.isIPAddress(username, true)
+        if (isIP && !possibleips.includes(username) &&
           !likelyips.includes(username)) {
           possibleips.push(username)
-        } else if (!possibleusers.includes(username) &&
+        } else if (!isIP && !possibleusers.includes(username) &&
           !likelyusers.includes(username)) {
           possibleusers.push(username)
         }
       }
     }
-    // Wire up the "select all" options
-    $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_acb', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_ab', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_tp', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_email', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    spiHelperGenerateSelect('spiHelper_block_tag', spiHelperTagOptions)
-    $('#spiHelper_block_tag', $actionView).on('change', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    spiHelperGenerateSelect('spiHelper_block_tag_altmaster', spiHelperAltMasterTagOptions)
-    $('#spiHelper_block_tag_altmaster', $actionView).on('change', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
-    $('#spiHelper_block_lock', $actionView).on('click', function (e) {
-      spiHelperSetAllBlockOpts($(e.target))
-    })
+    if (spiHelperActionsSelected.Block) {
+      if (spiHelperIsAdmin()) {
+        $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
+      } else {
+        $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
+      }
+      // Wire up the "select all" options
+      $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_acb', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_ab', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_tp', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_email', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      spiHelperGenerateSelect('spiHelper_block_tag', spiHelperTagOptions)
+      $('#spiHelper_block_tag', $actionView).on('change', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      spiHelperGenerateSelect('spiHelper_block_tag_altmaster', spiHelperAltMasterTagOptions)
+      $('#spiHelper_block_tag_altmaster', $actionView).on('change', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
+      $('#spiHelper_block_lock', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'block')
+      })
 
-    for (let i = 0; i < likelyusers.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperUserCount)
+      for (let i = 0; i < likelyusers.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(likelyusers[i], true, spiHelperBlockTableUserCount)
+      }
+      for (let i = 0; i < likelyips.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperBlockTableUserCount)
+      }
+      for (let i = 0; i < possibleusers.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperBlockTableUserCount)
+      }
+      for (let i = 0; i < possibleips.length; i++) {
+        spiHelperBlockTableUserCount++
+        await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperBlockTableUserCount)
+      }
+    } else {
+      $('#spiHelper_blockTagView', $actionView).hide()
     }
-    for (let i = 0; i < likelyips.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(likelyips[i], true, spiHelperUserCount)
-    }
-    for (let i = 0; i < possibleusers.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(possibleusers[i], false, spiHelperUserCount)
-    }
-    for (let i = 0; i < possibleips.length; i++) {
-      spiHelperUserCount++
-      await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperUserCount)
+    if (spiHelperActionsSelected.Link) {
+      // Wire up the "select all" options
+      $('#spiHelper_link_editorInteractionAnalyser', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_link_interactionTimeline', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_link_timecardSPITools', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_link_consolidatedTimelineSPITools', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_link_pagesSPITools', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+      $('#spiHelper_link_checkUserWikiSearch', $actionView).on('click', function (e) {
+        spiHelperSetAllTableColumnOpts($(e.target), 'link')
+      })
+
+      for (let i = 0; i < likelyusers.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(likelyusers[i], spiHelperLinkTableUserCount)
+      }
+      for (let i = 0; i < likelyips.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(likelyips[i], spiHelperLinkTableUserCount)
+      }
+      for (let i = 0; i < possibleusers.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(possibleusers[i], spiHelperLinkTableUserCount)
+      }
+      for (let i = 0; i < possibleips.length; i++) {
+        spiHelperLinkTableUserCount++
+        await spiHelperGenerateLinksTableLine(possibleips[i], spiHelperLinkTableUserCount)
+      }
+    } else {
+      $('#spiHelper_sockLinksView', $actionView).hide()
     }
   } else {
     $('#spiHelper_blockTagView', $actionView).hide()
-  }
-  if (!spiHelperActionsSelected.Close) {
-    $('#spiHelper_closeView', $actionView).hide()
-  }
-  if (spiHelperActionsSelected.Rename) {
-    if (spiHelperSectionId) {
-      $('#spiHelper_moveHeader', $actionView).text('Move section "' + spiHelperSectionName + '"')
-    } else {
-      $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
-    }
-  } else {
-    $('#spiHelper_moveView', $actionView).hide()
-  }
-
-  if (!spiHelperActionsSelected.Archive) {
-    $('#spiHelper_archiveView', $actionView).hide()
-  }
-
-  // Only give the option to comment if we selected a specific section
-  if (spiHelperSectionId) {
-    // generate the note prefixes
-    /** @type {SelectOption[]} */
-    const spiHelperNoteTemplates = [
-      { label: 'Comment templates', selected: true, value: '', disabled: true }
-    ]
-    if (spiHelperIsClerk()) {
-      spiHelperNoteTemplates.push({ label: 'Clerk note', selected: false, value: 'clerknote' })
-    }
-    if (spiHelperIsAdmin()) {
-      spiHelperNoteTemplates.push({ label: 'Administrator note', selected: false, value: 'adminnote' })
-    }
-    if (spiHelperIsCheckuser()) {
-      spiHelperNoteTemplates.push({ label: 'CU note', selected: false, value: 'cunote' })
-    }
-    spiHelperNoteTemplates.push({ label: 'Note', selected: false, value: 'takenote' })
-
-    // Wire up the select boxes
-    spiHelperGenerateSelect('spiHelper_noteSelect', spiHelperNoteTemplates)
-    $('#spiHelper_noteSelect', $actionView).on('change', function (e) {
-      spiHelperInsertNote($(e.target))
-    })
-    spiHelperGenerateSelect('spiHelper_adminSelect', spiHelperAdminTemplates)
-    $('#spiHelper_adminSelect', $actionView).on('change', function (e) {
-      spiHelperInsertTextFromSelect($(e.target))
-    })
-    spiHelperGenerateSelect('spiHelper_cuSelect', spiHelperCUTemplates)
-    $('#spiHelper_cuSelect', $actionView).on('change', function (e) {
-      spiHelperInsertTextFromSelect($(e.target))
-    })
-    $('#spiHelper_previewLink', $actionView).on('click', function () {
-      spiHelperPreviewText()
-    })
-  } else {
-    $('#spiHelper_commentView', $actionView).hide()
+    $('#spiHelper_sockLinksView', $actionView).hide()
   }
   // Wire up the submit button
-  $('#spiHelper_performActions', $actionView).on('click', () => {
+  $('#spiHelper_performActions', $actionView).one('click', () => {
     spiHelperPerformActions()
   })
 
-  updateForRole()
+  updateForRole($actionView)
 }
 
-async function updateForRole () {
-  const $actionView = $('#spiHelper_actionViewDiv', document)
+/**
+ * Update the view for the roles of the person running the script
+ * by selectively hiding.
+ * view: @type JQuery object representing the class / id for the view
+ */
+async function updateForRole (view) {
   // Hide items based on role
   if (!spiHelperIsCheckuser()) {
     // Hide CU options from non-CUs
-    $('.spiHelper_cuClass', $actionView).hide()
+    $('.spiHelper_cuClass', view).hide()
   }
   if (!spiHelperIsAdmin()) {
     // Hide block options from non-admins
-    $('.spiHelper_adminClass', $actionView).hide()
+    $('.spiHelper_adminClass', view).hide()
   }
   if (!(spiHelperIsAdmin() || spiHelperIsClerk())) {
-    $('.spiHelper_adminClerkClass', $actionView).hide()
+    $('.spiHelper_adminClerkClass', view).hide()
   }
 }
 
@@ -833,7 +1002,7 @@ async function spiHelperPerformActions () {
     spiHelperArchiveNoticeParams.xwiki = $('#spiHelper_spiMgmt_crosswiki', $actionView).prop('checked')
     spiHelperArchiveNoticeParams.notalk = $('#spiHelper_spiMgmt_notalk', $actionView).prop('checked')
   }
-  if (spiHelperSectionId) {
+  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
     comment = $('#spiHelper_CommentText', $actionView).val().toString()
   }
   if (spiHelperActionsSelected.Block) {
@@ -844,15 +1013,16 @@ async function spiHelperPerformActions () {
     if (spiHelperIsAdmin() && !$('#spiHelper_noblock', $actionView).prop('checked')) {
       const masterNotice = $('#spiHelper_blocknoticemaster', $actionView).prop('checked')
       const sockNotice = $('#spiHelper_blocknoticesocks', $actionView).prop('checked')
-      for (let i = 1; i <= spiHelperUserCount; i++) {
+      for (let i = 1; i <= spiHelperBlockTableUserCount; i++) {
         if ($('#spiHelper_block_doblock' + i, $actionView).prop('checked')) {
-          if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
+          const usernameValue = $('#spiHelper_block_username' + i, $actionView).val()
+          if (!usernameValue) {
             // Skip blank usernames, empty string is falsey
             continue
           }
           let noticetype = ''
 
-          const username = spiHelperNormalizeUsername($('#spiHelper_block_username' + i, $actionView).val().toString())
+          const username = spiHelperNormalizeUsername(usernameValue.toString())
 
           if (masterNotice && ($('#spiHelper_block_tag' + i, $actionView).val().toString().includes('master') ||
                 spiHelperNormalizeUsername(spiHelperCaseName) === username)) {
@@ -893,7 +1063,7 @@ async function spiHelperPerformActions () {
         }
       }
     } else {
-      for (let i = 1; i <= spiHelperUserCount; i++) {
+      for (let i = 1; i <= spiHelperBlockTableUserCount; i++) {
         if (!$('#spiHelper_block_username' + i, $actionView).val().toString()) {
           // Skip blank entries
           continue
@@ -923,7 +1093,7 @@ async function spiHelperPerformActions () {
     spiHelperActionsSelected.Archive = $('#spiHelper_ArchiveCase', $actionView).prop('checked')
   }
 
-  displayMessage('<ul id="spiHelper_status" />')
+  displayMessage('<div id="linkViewResults" hidden><h4>Generated links</h4><ul id="linkViewResultsList"></ul></div><h4>Running actions</h4><ul id="spiHelper_status" />')
 
   const $statusAnchor = $('#spiHelper_status', document)
 
@@ -937,10 +1107,55 @@ async function spiHelperPerformActions () {
   }
   logMessage += ' ~~~~~'
 
-  if (spiHelperSectionId !== null) {
+  if (spiHelperActionsSelected.Link) {
+    $('#linkViewResults', document).show()
+    const spiHelperUsersForLinks = {
+      editorInteractionAnalyser: [],
+      interactionTimeline: [],
+      timecardSPITools: [],
+      consolidatedTimelineSPITools: [],
+      pagesSPITools: [],
+      checkUserWikiSearch: []
+    }
+    for (let i = 1; i <= spiHelperLinkTableUserCount; i++) {
+      const username = $('#spiHelper_link_username' + i, $actionView).val().toString()
+      if (!username) {
+        // Skip blank usernames
+        continue
+      }
+      if ($('#spiHelper_link_editorInteractionAnalyser' + i, $actionView).prop('checked')) spiHelperUsersForLinks.editorInteractionAnalyser.push(username)
+      if ($('#spiHelper_link_interactionTimeline' + i, $actionView).prop('checked')) spiHelperUsersForLinks.interactionTimeline.push(username)
+      if ($('#spiHelper_link_timecardSPITools' + i, $actionView).prop('checked')) spiHelperUsersForLinks.timecardSPITools.push(username)
+      if ($('#spiHelper_link_consolidatedTimelineSPITools' + i, $actionView).prop('checked')) spiHelperUsersForLinks.consolidatedTimelineSPITools.push(username)
+      if ($('#spiHelper_link_pagesSPITools' + i, $actionView).prop('checked')) spiHelperUsersForLinks.pagesSPITools.push(username)
+      if ($('#spiHelper_link_checkUserWikiSearch' + i, $actionView).prop('checked')) spiHelperUsersForLinks.checkUserWikiSearch.push(username)
+    }
+
+    const $linkViewList = $('#linkViewResultsList', document)
+    for (const link in spiHelperUsersForLinks) {
+      if (spiHelperUsersForLinks[link].length === 0) continue
+      const URLentry = spiHelperLinkViewURLFormats[link]
+      let generatedURL = URLentry.baseurl + '?' + (URLentry.multipleUserQueryStringKeys ? '' : URLentry.userQueryStringKey + '=')
+      for (let i = 0; i < spiHelperUsersForLinks[link].length; i++) {
+        const username = spiHelperUsersForLinks[link][i]
+        generatedURL += (i === 0 ? '' : URLentry.userQueryStringSeparator)
+        if (URLentry.multipleUserQueryStringKeys) {
+          generatedURL += URLentry.userQueryStringKey + '=' + URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
+        } else {
+          generatedURL += URLentry.userQueryStringWrapper + encodeURIComponent(username) + URLentry.userQueryStringWrapper
+        }
+      }
+      generatedURL += (URLentry.appendToQueryString === '' ? '' : '&') + URLentry.appendToQueryString
+      const $statusLine = $('<li>').appendTo($linkViewList)
+      const $statusLineLink = $('<a>').appendTo($statusLine)
+      $statusLineLink.attr('href', generatedURL).attr('target', '_blank').attr('rel', 'noopener noreferrer').text(spiHelperLinkViewURLFormats[link].name)
+    }
+  }
+
+  if (spiHelperSectionId !== null && !spiHelperIsThisPageAnArchive) {
     let caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
     if (caseStatusResult === null) {
-      sectionText = sectionText.replace('===', '{{SPI case status|}}\n===')
+      sectionText = sectionText.replace(/^(\s*===.*===[^\S\r\n]*)/, '$1\n{{SPI case status|}}')
       caseStatusResult = spiHelperCaseStatusRegex.exec(sectionText)
     }
     const oldCaseStatus = caseStatusResult[1] || 'open'
@@ -1091,7 +1306,7 @@ async function spiHelperPerformActions () {
           if (blockEntry.tpn) {
             // Also warn the user if we were going to post a block notice on their talk page
             const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-            $statusLine.addClass('spiHelper-errortext').html('<b>Block failed on ' + blockEntry.username + ', not adding talk page notice</b>')
+            $statusLine.addClass('spihelper-errortext').html('<b>Block failed on ' + blockEntry.username + ', not adding talk page notice</b>')
           }
           return
         }
@@ -1117,16 +1332,24 @@ async function spiHelperPerformActions () {
           } else {
             newText = '== Blocked for sockpuppetry ==\n'
           }
-          newText += '{{subst:uw-sockblock|spi=' + spiHelperCaseName
+          const isCheckUserBlockAccount = spiHelperIsCheckuser() && cuBlock && spiHelperSettings.useCheckuserblockAccount
+          if (isCheckUserBlockAccount) {
+            newText += '{{checkuserblock-account|sig=~~~~'
+          } else {
+            newText += '{{subst:uw-sockblock|sig=yes'
+          }
+          newText += '|spi=' + spiHelperCaseName
           if (blockEntry.duration === 'indefinite' || blockEntry.duration === 'infinity') {
             newText += '|indef=yes'
           } else {
-            newText += '|duration=' + blockEntry.duration
+            newText += '|time=' + blockEntry.duration
+            if (isCheckUserBlockAccount) {
+              newText += '|indef=no'
+            }
           }
           if (blockEntry.ntp) {
             newText += '|notalk=yes'
           }
-          newText += '|sig=yes'
           if (isSock) {
             newText += '|master=' + sockmaster
           }
@@ -1162,6 +1385,18 @@ async function spiHelperPerformActions () {
       spiHelperTags.forEach(async (tagEntry) => {
         if (mw.util.isIPAddress(tagEntry.username, true)) {
           return // do not support tagging IPs
+        }
+        const existsGlobally = spiHelperDoesUserExistGlobally(tagEntry.username)
+        const existsLocally = spiHelperDoesUserExistLocally(tagEntry.username)
+        if (!existsGlobally && !existsLocally) {
+          // Skip, don't tag accounts that don't exist
+          const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+          $statusLine.addClass('spihelper-errortext').html('<b>The account ' + tagEntry.username + ' does not exist and so has not been tagged.</b>')
+          return
+        }
+        if (!($('#spiHelper_tagAccountsWithoutLocalAccount', $actionView).prop('checked')) && existsGlobally && !existsLocally) {
+          // Skip as the account does not exist locally but the "tag accounts that exist locally" setting is unchecked.
+          return
         }
         let tagText = ''
         let altmasterName = ''
@@ -1208,6 +1443,10 @@ async function spiHelperPerformActions () {
             checked = 'yes'
             isMaster = true
             break
+          default:
+            // Should not be reachable, but since a couple people have
+            // reported blank tags, let's add a safety check
+            return
         }
         const isLocked = await spiHelperIsUserGloballyLocked(tagEntry.username) ? 'yes' : 'no'
         let isNotBlocked
@@ -1215,6 +1454,9 @@ async function spiHelperPerformActions () {
         // block hasn't gone through by the time we reach this point
         if (tagEntry.blocking) {
           isNotBlocked = 'no'
+        } else if (!existsLocally) {
+          // If the user account does not exist locally it cannot be blocked. This check skips the need for the API call to check if the user is blocked
+          isNotBlocked = 'yes'
         } else {
           // Otherwise, query whether the user is blocked
           isNotBlocked = await spiHelperGetUserBlockReason(tagEntry.username) ? 'no' : 'yes'
@@ -1370,8 +1612,10 @@ async function spiHelperPerformActions () {
       }
     }
   }
-  if (spiHelperSectionId && comment && comment !== '*') {
+  if (spiHelperSectionId && comment && comment !== '*' && !spiHelperIsThisPageAnArchive) {
     if (!sectionText.includes('\n----')) {
+      sectionText.replace('<!--- All comments go ABOVE this line, please. -->', '')
+      sectionText.replace('<!-- All comments go ABOVE this line, please. -->', '')
       sectionText += '\n----<!-- All comments go ABOVE this line, please. -->'
     }
     if (!/~~~~/.test(comment)) {
@@ -1404,7 +1648,7 @@ async function spiHelperPerformActions () {
     }
     logMessage += '\n** closed case'
   }
-  if (spiHelperSectionId !== null) {
+  if (spiHelperSectionId !== null && !spiHelperIsThisPageAnArchive) {
     const caseStatusText = spiHelperCaseStatusRegex.exec(sectionText)[0]
     sectionText = sectionText.replace(caseStatusText, '{{SPI case status|' + newCaseStatus + '}}')
   }
@@ -1414,16 +1658,18 @@ async function spiHelperPerformActions () {
     editsummary = 'Saving page'
   }
 
-  // Make all of the requested edits (synchronous since we might make more changes to the page)
-  const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
-    spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, spiHelperSectionId)
-  if (!editResult) {
-    // Page edit failed (probably an edit conflict), dump the comment if we had one
-    if (comment && comment !== '*') {
-      $('<li>')
-        .append($('<div>').addClass('spihelper-errortext')
-          .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
-        .appendTo($('#spiHelper_status', document))
+  // Make all of the requested edits (synchronous since we might make more changes to the page), unless the page is an archive (as there should be no edits made)
+  if (!spiHelperIsThisPageAnArchive) {
+    const editResult = await spiHelperEditPage(spiHelperPageName, sectionText, editsummary, false,
+      spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, spiHelperSectionId)
+    if (!editResult) {
+      // Page edit failed (probably an edit conflict), dump the comment if we had one
+      if (comment && comment !== '*') {
+        $('<li>')
+          .append($('<div>').addClass('spihelper-errortext')
+            .append($('<b>').text('SPI page edit failed! Comment was: ' + comment)))
+          .appendTo($('#spiHelper_status', document))
+      }
     }
   }
   // Update to the latest revision ID
@@ -1501,6 +1747,24 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   'use strict'
   const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams) + '\n{{SPIpriorcases}}'
   const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '')
+
+  // Update previous SPI redirects to this location
+  const pagesChecked = []
+  const pagesToCheck = [oldCasePage]
+  let currentPageToCheck = null
+  while (pagesToCheck.length !== 0) {
+    currentPageToCheck = pagesToCheck.pop()
+    pagesChecked.push(currentPageToCheck)
+    const backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
+    for (let i = 0; i < backlinks.length; i++) {
+      if ((await spiHelperParseArchiveNotice(backlinks[i].title)).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')) {
+        spiHelperEditPage(backlinks[i].title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
+        if (pagesChecked.indexOf(backlinks[i]).title !== -1) {
+          pagesToCheck.push(backlinks[i])
+        }
+      }
+    }
+  }
 
   // The old case should just be the archivenotice template and point to the new case
   spiHelperEditPage(oldCasePage, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
@@ -1592,7 +1856,7 @@ async function spiHelperArchiveCase () {
           archiveId++
         }
         const newArchiveName = spiHelperGetArchiveName() + '/' + archiveId
-        await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false)
+        await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false, false)
         await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
       }
       // Need an await here - if we have multiple sections archiving we don't want
@@ -1631,7 +1895,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
 
   if (!archiveSuccess) {
     const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-    $statusLine.addClass('spiHelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
+    $statusLine.addClass('spihelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
     return
   }
 
@@ -1673,8 +1937,15 @@ async function spiHelperMoveCase (target) {
       return
     }
   }
-  // Housekeeping to update all of the var names following the rename
   const oldPageName = spiHelperPageName
+  if (newPageName === oldPageName) {
+    $('<li>')
+      .append($('<div>').addClass('spihelper-errortext')
+        .append($('<b>').text('Target page is the current page, aborting merge.')))
+      .appendTo($('#spiHelper_status', document))
+    return
+  }
+  // Housekeeping to update all of the var names following the rename
   const oldArchiveName = spiHelperGetArchiveName()
   spiHelperCaseName = target
   spiHelperPageName = newPageName
@@ -1702,6 +1973,71 @@ async function spiHelperMoveCase (target) {
       await spiHelperDeletePage(oldArchiveName, 'Deleting copied archive')
       archivesCopied = true
     }
+    // Now get existing protection levels on the target and existing page.
+    const oldPageNameProtection = await spiHelperGetProtectionInformation(oldPageName)
+    const newPageNameProtection = await spiHelperGetProtectionInformation(spiHelperPageName)
+    const newProtectionValues = []
+    const siteProtectionInformation = await spiHelperGetSiteRestrictionInformation()
+    // First find if both the old page and new page had the same protection type enabled
+    siteProtectionInformation.types.forEach((type) => {
+      let oldPageNameEntry = oldPageNameProtection.filter((dict) => { return dict.type === type })
+      let newPageNameEntry = newPageNameProtection.filter((dict) => { return dict.type === type })
+      if (oldPageNameEntry.length > 0 && newPageNameEntry.length > 0) {
+        const newProtectionDict = { type: oldPageNameEntry.type }
+        oldPageNameEntry = oldPageNameEntry[0]
+        newPageNameEntry = newPageNameEntry[0]
+        if (newPageNameEntry.expiry === 'infinity' || oldPageNameEntry.expiry === 'infinity' || newPageNameEntry.expiry === 'infinite' || oldPageNameEntry.expiry === 'infinite') {
+          newProtectionDict.push({ expiry: 'infinite' })
+        } else if (newPageNameEntry.expiry < oldPageNameEntry.expiry) {
+          newProtectionDict.push({ expiry: oldPageNameEntry.expiry })
+        } else {
+          newProtectionDict.push({ expiry: newPageNameEntry.expiry })
+        }
+        const oldPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(oldPageNameEntry.level)
+        const newPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(newPageNameEntry.level)
+        if (oldPageNameEntryLevelIndex === -1 || newPageNameEntryLevelIndex === -1) {
+          console.error('Invalid protection information provided from API')
+          return
+        } else if (oldPageNameEntryLevelIndex > newPageNameEntryLevelIndex) {
+          newProtectionDict.push({ level: oldPageNameEntry.level })
+        } else if (oldPageNameEntryLevelIndex <= newPageNameEntryLevelIndex) {
+          newProtectionDict.push({ level: newPageNameEntry.level })
+        }
+        newProtectionValues.push(newProtectionDict)
+      } else if (oldPageNameEntry.length > 0) {
+        newProtectionValues.push(oldPageNameEntry[0])
+      } else if (newPageNameEntry.length > 0) {
+        newProtectionValues.push(newPageNameEntry[0])
+      }
+    })
+    // Now handle pending changes protection
+    const oldPageNameStabilisation = await spiHelperGetStabilisationSettings(oldPageName)
+    const newPageNameStabilisation = await spiHelperGetStabilisationSettings(spiHelperPageName)
+    let newStabilisationSettings = { protection_level: '' }
+    if (oldPageNameStabilisation !== false && newPageNameStabilisation !== false) {
+      // Pending changes is used on both pages
+      if (newPageNameStabilisation.protection_expiry === 'infinity' || oldPageNameStabilisation.protection_expiry === 'infinity' || newPageNameStabilisation.protection_expiry === 'infinite' || oldPageNameStabilisation.protection_expiry === 'infinite') {
+        newStabilisationSettings.push({ protection_expiry: 'infinite' })
+      } else if (newPageNameStabilisation.protection_expiry < oldPageNameStabilisation.expiry) {
+        newStabilisationSettings.push({ protection_expiry: oldPageNameStabilisation.protection_expiry })
+      } else {
+        newStabilisationSettings.push({ protection_expiry: newPageNameStabilisation.protection_expiry })
+      }
+      const oldPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(oldPageNameStabilisation.protection_level)
+      const newPageNameEntryLevelIndex = siteProtectionInformation.levels.indexOf(newPageNameStabilisation.protection_level)
+      if (oldPageNameEntryLevelIndex === -1 || newPageNameEntryLevelIndex === -1) {
+        console.error('Invalid protection information provided from API')
+        return
+      } else if (oldPageNameEntryLevelIndex > newPageNameEntryLevelIndex) {
+        newStabilisationSettings.push({ level: oldPageNameStabilisation.protection_level })
+      } else if (oldPageNameEntryLevelIndex <= newPageNameEntryLevelIndex) {
+        newStabilisationSettings.push({ level: newPageNameStabilisation.protection_level })
+      }
+    } else if (oldPageNameStabilisation !== false) {
+      newStabilisationSettings = oldPageNameStabilisation
+    } else if (newPageNameStabilisation !== false) {
+      newStabilisationSettings = newPageNameStabilisation
+    }
     // Ignore warnings on the move, we're going to get one since we're stomping an existing page
     await spiHelperDeletePage(spiHelperPageName, 'Deleting as part of case merge')
     await spiHelperMovePage(oldPageName, spiHelperPageName, 'Merging case to [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]', true)
@@ -1710,6 +2046,16 @@ async function spiHelperMoveCase (target) {
       // Create a redirect
       spiHelperEditPage(oldArchiveName, '#REDIRECT [[' + newArchiveName + ']]', 'Redirecting old archive to new archive',
         false, spiHelperSettings.watchArchive, spiHelperSettings.watchArchiveExpiry)
+    }
+    // Now to protect both the oldPageName and newPageName with the protection settings in newProtectionDict, unless it is empty (i.e. no protection needed)
+    // Also apply any pending changes needed (i.e. if newStabilisationSettings has a non-empty protection_level)
+    if (newProtectionValues.length !== 0) {
+      spiHelperProtectPage(spiHelperPageName, newProtectionValues)
+      spiHelperProtectPage(oldPageName, newProtectionValues)
+    }
+    if (newStabilisationSettings.protection_level !== '') {
+      spiHelperConfigurePendingChanges(spiHelperPageName, newStabilisationSettings)
+      spiHelperConfigurePendingChanges(oldPageName, newStabilisationSettings)
     }
   } else {
     await spiHelperMovePage(oldPageName, spiHelperPageName, 'Moving case to [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]', false)
@@ -1865,7 +2211,7 @@ function spiHelperGetMaxPostExpandSize () {
 function spiHelperGetInterwikiPrefix () {
   // Mostly copied from https://github.com/Xi-Plus/twinkle-global/blob/master/morebits.js
   // Most of this should be overkill (since most of these wikis don't have checkuser support)
-  /** @type {string[]} */ const temp = mw.config.get('wgServer').replace(/^(https?)?\/\//, '').split('.')
+  /** @type {string[]} */ const temp = mw.config.get('wgServer').replace(/^(https?:)?\/\//, '').split('.')
   const wikiLang = temp[0]
   const wikiFamily = temp[1]
   switch (wikiFamily) {
@@ -1967,7 +2313,7 @@ async function spiHelperGetPageText (title, show, sectionId = null) {
     $statusLine.html('Got ' + $link.html())
     return response.query.pages[pageid].revisions[0].slots.main['*']
   } catch (error) {
-    $statusLine.addClass('spiHelper-errortext').html('<b>Failed to get ' + $link.html() + '</b>: ' + error)
+    $statusLine.addClass('spihelper-errortext').html('<b>Failed to get ' + $link.html() + '</b>: ' + error)
     return ''
   }
 }
@@ -2019,7 +2365,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     request.section = sectionId
   }
   if (watchExpiry) {
-    request.watchlistExpiry = watchExpiry
+    request.watchlistexpiry = watchExpiry
   }
   try {
     await api.postWithToken('csrf', request)
@@ -2027,7 +2373,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     spiHelperActiveOperations.set(activeOpKey, 'success')
     return true
   } catch (error) {
-    $statusLine.addClass('spiHelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error)
+    $statusLine.addClass('spihelper-errortext').html('<b>Edit failed on ' + $link.html() + '</b>: ' + error)
     console.error(error)
     spiHelperActiveOperations.set(activeOpKey, 'failed')
     return false
@@ -2041,10 +2387,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
  * @param {string} summary Edit summary to use for the move
  * @param {boolean} ignoreWarnings Whether to ignore warnings on move (used to force-move one page over another)
  */
-async function spiHelperMovePage (sourcePage, destPage, summary, ignoreWarnings) {
-  // Move a page from sourcePage to destPage. Not that complicated.
-  'use strict'
-
+async function spiHelperMovePage (sourcePage, destPage, summary, ignoreWarnings, moveSubpages = true) {
   const activeOpKey = 'move_' + sourcePage + '_' + destPage
   spiHelperActiveOperations.set(activeOpKey, 'running')
 
@@ -2064,7 +2407,7 @@ async function spiHelperMovePage (sourcePage, destPage, summary, ignoreWarnings)
       to: destPage,
       reason: summary + spihelperAdvert,
       noredirect: false,
-      movesubpages: true,
+      movesubpages: moveSubpages,
       ignoreWarnings: ignoreWarnings
     })
     $statusLine.html('Moved ' + $sourceLink.prop('outerHTML') + ' to ' + $destLink.prop('outerHTML'))
@@ -2258,6 +2601,51 @@ async function spiHelperIsUserGloballyLocked (user) {
   }
 }
 
+async function spiHelperDoesUserExistLocally (user) {
+  'use strict'
+  // This should never be cross-wiki
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      list: 'allusers',
+      agulimit: '1',
+      agufrom: user,
+      aguto: user
+    })
+    if (response.query.allusers.length === 0) {
+      // If the length is 0, then we couldn't find the local account so return false
+      return false
+    }
+    // Otherwise a local account exists so return true
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
+async function spiHelperDoesUserExistGlobally (user) {
+  'use strict'
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      list: 'globalallusers',
+      agulimit: '1',
+      agufrom: user,
+      aguto: user
+    })
+    if (response.query.globalallusers.length === 0) {
+      // If the length is 0, then we couldn't find the global user so return false
+      return false
+    }
+    // Otherwise the global account exists so return true
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
 /**
  * Get a page's latest revision ID - useful for preventing edit conflicts
  *
@@ -2404,6 +2792,183 @@ async function spiHelperGetInvestigationSectionIDs () {
 }
 
 /**
+ * Get SPI page backlinks to this SPI page.
+ * Used to fix double redirects when merging cases.
+ */
+async function spiHelperGetSPIBacklinks (casePageName) {
+  // Only looking for enwiki backlinks
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      list: 'backlinks',
+      bltitle: casePageName,
+      blnamespace: '4',
+      bldir: 'ascending',
+      blfilterredir: 'nonredirects'
+    })
+    return response.query.backlinks.filter((dictEntry) => {
+      return dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/') && !dictEntry.title.startsWith('Wikipedia:Sockpuppet investigations/SPI/') && !dictEntry.title.match('Wikipedia:Sockpuppet investigations/.*/Archive.*')
+    })
+  } catch (error) {
+    return []
+  }
+}
+
+/**
+ * Get the page protection level for a SPI page.
+ * Used to keep the protection level after a history merge
+ */
+async function spiHelperGetProtectionInformation (casePageName) {
+  // Only looking for enwiki protection information
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      prop: 'info',
+      titles: casePageName,
+      inprop: 'protection'
+    })
+    return response.query.pages[Object.keys(response.query.pages)[0]].protection
+  } catch (error) {
+    return []
+  }
+}
+
+/**
+ * Gets stabilisation settings information for a page. If no pending changes exists then it returns false.
+ */
+async function spiHelperGetStabilisationSettings (casePageName) {
+  // Only looking for enwiki stabilisation information
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      prop: 'flagged',
+      titles: casePageName
+    })
+    const entry = response.query.pages[Object.keys(response.query.pages)[0]]
+    if ('flagged' in entry) {
+      return entry.flagged
+    } else {
+      return false
+    }
+  } catch (error) {
+    return false
+  }
+}
+
+async function spiHelperProtectPage (casePageName, protections) {
+  // Only lookint to protect pages on enwiki
+
+  const activeOpKey = 'protect_' + casePageName
+  spiHelperActiveOperations.set(activeOpKey, 'running')
+
+  const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
+  const $link = $('<a>').attr('href', mw.util.getUrl(casePageName)).attr('title', casePageName).text(casePageName)
+  $statusLine.html('Protecting ' + $link.prop('outerHTML'))
+
+  const api = new mw.Api()
+  try {
+    let protectlevelinfo = ''
+    let expiryinfo = ''
+    protections.forEach((dict) => {
+      if (protectlevelinfo !== '') {
+        protectlevelinfo = protectlevelinfo + '|'
+        expiryinfo = expiryinfo + '|'
+      }
+      protectlevelinfo = protectlevelinfo + dict.type + '=' + dict.level
+      expiryinfo = expiryinfo + dict.expiry
+    })
+    await api.postWithToken('csrf', {
+      action: 'protect',
+      format: 'json',
+      title: casePageName,
+      protections: protectlevelinfo,
+      expiry: expiryinfo,
+      reason: 'Restoring protection after history merge'
+    })
+    $statusLine.html('Protected ' + $link.prop('outerHTML'))
+    spiHelperActiveOperations.set(activeOpKey, 'success')
+  } catch (error) {
+    $statusLine.addClass('spihelper-errortext').html('<b>Failed to protect ' + $link.prop('outerHTML') + '</b>: ' + error)
+    spiHelperActiveOperations.set(activeOpKey, 'failed')
+  }
+}
+
+async function spiHelperConfigurePendingChanges (casePageName, protectionLevel, protectionExpiry) {
+  // Only lookint to protect pages on enwiki
+
+  const activeOpKey = 'stabilize_' + casePageName
+  spiHelperActiveOperations.set(activeOpKey, 'running')
+
+  const api = new mw.Api()
+  try {
+    await api.postWithToken('csrf', {
+      action: 'stabilize',
+      format: 'json',
+      titles: casePageName,
+      protectlevel: protectionLevel,
+      expiry: protectionExpiry,
+      reason: 'Restoring pending changes protection after history merge'
+    })
+    spiHelperActiveOperations.set(activeOpKey, 'success')
+  } catch (error) {
+    spiHelperActiveOperations.set(activeOpKey, 'failed')
+  }
+}
+
+async function spiHelperGetSiteRestrictionInformation () {
+  // For enwiki only as this is it's only use case
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'query',
+      format: 'json',
+      meta: 'siteinfo',
+      siprop: 'restrictions'
+    })
+    return response.query.restrictions
+  } catch (error) {
+    return []
+  }
+}
+
+/**
+ * Parse given text as wikitext without it needing to be currently saved onwiki.
+ *
+ */
+async function spiHelperParseWikitext (wikitext) {
+  // For enwiki only for now
+  const api = new mw.Api()
+  try {
+    const response = await api.get({
+      action: 'parse',
+      prop: 'text',
+      text: wikitext,
+      wrapoutputclass: '',
+      disablelimitreport: 1,
+      disableeditsection: 1,
+      contentmodel: 'wikitext'
+    })
+    return response.parse.text['*']
+  } catch (error) {
+    return ''
+  }
+}
+
+/**
+ * Returns true if the date provided is a valid date for strtotime in PHP (determined by using the time parser function and a parse API call)
+ */
+async function spiHelperValidateDate (dateInStringFormat) {
+  const response = await spiHelperParseWikitext('{{#time:r|' + dateInStringFormat + '}}')
+  return !response.includes('Error: Invalid time.')
+}
+
+/**
  * Pretty obvious - gets the name of the archive. This keeps us from having to regen it
  * if we rename the case
  *
@@ -2486,6 +3051,42 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   // Generate the select entries
   spiHelperGenerateSelect('spiHelper_block_tag' + id, spiHelperTagOptions)
   spiHelperGenerateSelect('spiHelper_block_tag_altmaster' + id, spiHelperAltMasterTagOptions)
+
+  // Add onlistener events to update the global lock checkbox if the username is changed between a IP address and username
+  $('#spiHelper_block_username' + id).on('change', (event) => {
+    const id = $(event.target).attr('id').replace('spiHelper_block_username', '')
+    $('#spiHelper_block_lock' + id).prop('disabled', mw.util.isIPAddress($(event.target).val(), true))
+  })
+}
+
+async function spiHelperGenerateLinksTableLine (username, id) {
+  'use strict'
+
+  const $table = $('#spiHelper_userInfoTable', document)
+
+  const $row = $('<tr>')
+  // Username
+  $('<td>').append($('<input>').attr('type', 'text').attr('id', 'spiHelper_link_username' + id)
+    .val(username).addClass('.spihelper-widthlimit')).appendTo($row)
+  // Editor interaction analyser
+  $('<td>').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_editorInteractionAnalyser' + id)).attr('style', 'text-align:center;').appendTo($row)
+  // Interaction timeline
+  $('<td>').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_interactionTimeline' + id)).attr('style', 'text-align:center;').appendTo($row)
+  // SPI tools timecard tool
+  $('<td>').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_timecardSPITools' + id)).attr('style', 'text-align:center;').appendTo($row)
+  // SPI tools consilidated timeline (admin only based on OAUTH requirements)
+  $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_consolidatedTimelineSPITools' + id)).attr('style', 'text-align:center;').appendTo($row)
+  // SPI tools pages tool (admin only based on OAUTH requirements)
+  $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_pagesSPITools' + id)).attr('style', 'text-align:center;').appendTo($row)
+  // Checkuser wiki search (CU only)
+  $('<td>').addClass('spiHelper_cuClass').append($('<input>').attr('type', 'checkbox')
+    .attr('id', 'spiHelper_link_checkUserWikiSearch' + id)).attr('style', 'text-align:center;').appendTo($row)
+  $table.append($row)
 }
 
 /**
@@ -2531,6 +3132,15 @@ async function spiHelperSetCheckboxesBySection () {
   $closeBox.prop('disabled', false)
   $archiveBox.prop('disabled', false)
 
+  // archivenotice sanity check
+  const pageText = await spiHelperGetPageText(spiHelperPageName, false)
+
+  const result = spiHelperArchiveNoticeRegex.exec(pageText)
+  if (!result) {
+    $warningText.append($('<b>').text('Can\'t find archivenotice template!'))
+    $warningText.show()
+  }
+
   if (spiHelperSectionId === null) {
     // Hide inputs that aren't relevant in the case view
     $('.spiHelper_singleCaseOnly', $topView).hide()
@@ -2556,8 +3166,8 @@ async function spiHelperSetCheckboxesBySection () {
     let casestatus = ''
     if (result) {
       casestatus = result[1]
-    } else {
-      $warningText.text(`Can't find case status in ${spiHelperSectionName}!`)
+    } else if (!spiHelperIsThisPageAnArchive) {
+      $warningText.append($('<b>').text(`Can't find case status in ${spiHelperSectionName}!`))
       $warningText.show()
     }
 
@@ -2570,15 +3180,27 @@ async function spiHelperSetCheckboxesBySection () {
 
     if (isClosed) {
       $closeBox.prop('disabled', true)
-      $archiveBox.prop('checked', true)
+      if (spiHelperSettings.tickArchiveWhenCaseClosed) {
+        $archiveBox.prop('checked', true)
+      }
     } else {
       $archiveBox.prop('disabled', true)
+      $('#spiHelper_Case_Action', $topView).on('click', function () {
+        $('#spiHelper_Close', $topView).prop('disabled', $('#spiHelper_Case_Action', $topView).prop('checked'))
+      })
+      $('#spiHelper_Close', $topView).on('click', function () {
+        $('#spiHelper_Case_Action', $topView).prop('disabled', $('#spiHelper_Close', $topView).prop('checked'))
+      })
     }
 
     // Change the label on the rename button
     $('#spiHelper_moveLabel', $topView).html('Move case section (<span title="You probably want to move the full case, ' +
       'select All Sections instead of a specific date in the drop-down"' +
       'class="rt-commentedText spihelper-hovertext"><b>READ ME FIRST</b></span>)')
+  }
+  // Only show options suitable for the archive subpage when running on the archives
+  if (spiHelperIsThisPageAnArchive) {
+    $('.spiHelper_notOnArchive', $topView).hide()
   }
 }
 
@@ -2634,9 +3256,9 @@ function spiHelperGenerateSelect (id, options) {
  *
  * @param {JQuery<HTMLElement>} source The HTML input element that we're matching all selections to
  */
-function spiHelperSetAllBlockOpts (source) {
+function spiHelperSetAllTableColumnOpts (source, forTable) {
   'use strict'
-  for (let i = 1; i <= spiHelperUserCount; i++) {
+  for (let i = 1; i <= (forTable === 'link' ? spiHelperLinkTableUserCount : spiHelperBlockTableUserCount); i++) {
     const $target = $('#' + source.attr('id') + i)
     if (source.attr('type') === 'checkbox') {
       // Don't try to set disabled checkboxes
@@ -2707,7 +3329,7 @@ function spiHelperInsertNote (source) {
  */
 function spiHelperCaseActionUpdated (source) {
   const $textBox = $('#spiHelper_CommentText', document)
-  const oldText = $textBox.val().toString()
+  let newText = $textBox.val().toString()
   let newTemplate = ''
   switch (source.val()) {
     case 'CUrequest':
@@ -2749,16 +3371,17 @@ function spiHelperCaseActionUpdated (source) {
       newTemplate = '{{onhold}}'
       break
   }
-  if (spiHelperClerkStatusRegex.test(oldText)) {
-    $textBox.val(oldText.replace(spiHelperClerkStatusRegex, newTemplate))
+  if (spiHelperClerkStatusRegex.test(newText)) {
+    newText = newText.replace(spiHelperClerkStatusRegex, newTemplate)
     if (!newTemplate) { // If the new template is empty, get rid of the stray ' - '
-      $textBox.val(oldText.replace(/^ - /, ''))
+      newText = newText.replace(/^(\s*\*\s*)? - /, '$1')
     }
   } else if (newTemplate) {
     // Don't try to insert if the "new template" is empty
     // Also remove the leading *
-    $textBox.val('*' + newTemplate + ' - ' + oldText.replace(/^\s*\*\s*/, ''))
+    newText = '*' + newTemplate + ' - ' + newText.replace(/^\s*\*\s*/, '')
   }
+  $textBox.val(newText)
 }
 
 /**
@@ -2815,9 +3438,23 @@ async function spiHelperLoadSettings () {
   try {
     await mw.loader.getScript('/w/index.php?title=Special:MyPage/spihelper-options.js&action=raw&ctype=text/javascript')
     if (typeof spiHelperCustomOpts !== 'undefined') {
-      Object.entries(spiHelperCustomOpts).forEach(([k, v]) => {
+      const keys = Object.keys(spiHelperCustomOpts)
+      for (let index = 0; index < keys.length; index++) {
+        const k = keys[index]
+        const v = spiHelperCustomOpts[k]
+        if (k in spiHelperValidSettings) {
+          if (spiHelperValidSettings[k].indexOf(v) === -1) {
+            mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
+            return
+          }
+        } else if (k in spiHelperSettingsNeedingValidDate) {
+          if (!await spiHelperValidateDate(v)) {
+            mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
+            return
+          }
+        }
         spiHelperSettings[k] = v
-      })
+      }
     }
   } catch (error) {
     mw.log.error('Error retrieving your spihelper-options.js')
@@ -2873,7 +3510,7 @@ function spiHelperIsClerk () {
  */
 function spiHelperNormalizeUsername (username) {
   // Replace underscores with spaces
-  username = username.replace('/_/g', ' ')
+  username = username.replace(/_/g, ' ')
   // Get rid of bad hidden characters
   username = username.replace(spiHelperHiddenCharNormRegex, '')
   // Remove leading and trailing spaces
@@ -2898,6 +3535,10 @@ function spiHelperNormalizeUsername (username) {
 async function spiHelperParseArchiveNotice (page) {
   const pagetext = await spiHelperGetPageText(page, false)
   const match = spiHelperArchiveNoticeRegex.exec(pagetext)
+  if (match === null) {
+    console.error('Missing archive notice')
+    return { username: null, deny: null, xwiki: null, notalk: null }
+  }
   const username = match[1]
   let deny = false
   let xwiki = false
@@ -2969,8 +3610,13 @@ function spiHelperMakeNewArchiveNotice (username, archiveNoticeParams) {
  * @return {Promise<void>}
  */
 // eslint-disable-next-line no-unused-vars
-async function spiHelperAddBlankUserLine () {
-  spiHelperUserCount++
-  await spiHelperGenerateBlockTableLine('', true, spiHelperUserCount)
+async function spiHelperAddBlankUserLine (tableName) {
+  if (tableName === 'block') {
+    spiHelperBlockTableUserCount++
+    await spiHelperGenerateBlockTableLine('', true, spiHelperBlockTableUserCount)
+  } else {
+    spiHelperLinkTableUserCount++
+    await spiHelperGenerateLinksTableLine('', spiHelperLinkTableUserCount)
+  }
   updateForRole()
 }
