@@ -1783,7 +1783,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   const newMasterRe = new RegExp(newMasterReString, 'sm')
   newPageText = newPageText.replace(newMasterRe, '$1\n$2')
 
-  await spiHelperEditPage(spiHelperPageName, newPageText, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID)
+  await spiHelperEditPage(spiHelperPageName, newPageText, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
   // Update to the latest revision ID
   spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
 }
@@ -1803,7 +1803,7 @@ async function spiHelperPostMergeCleanup (originalText) {
   newText = originalText + '\n' + newText
 
   // Write the updated case
-  await spiHelperEditPage(spiHelperPageName, newText, 'Re-adding previous cases following merge', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID)
+  await spiHelperEditPage(spiHelperPageName, newText, 'Re-adding previous cases following merge', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
   // Update to the latest revision ID
   spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
 }
