@@ -2,7 +2,7 @@
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
 // With contributions from Dreamy Jazz, L235, Tamzin, TheresNoTime, and Xiplus
-// v2.8.1 "Cabal Decree"
+// v2.8.2 "Cabal Decree"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
 
@@ -100,7 +100,7 @@ const spiHelperValidSettings = {
   watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
   watchTaggedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
   watchNewCats: ['preferences', 'watch', 'nochange', 'unwatch'],
-  watchBlockedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchBlockedUser: [true, false],
   clerk: [true, false],
   log: [true, false],
   reversed_log: [true, false],
@@ -3443,12 +3443,12 @@ async function spiHelperLoadSettings () {
         if (k in spiHelperValidSettings) {
           if (spiHelperValidSettings[k].indexOf(v) === -1) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
-            return
+            continue
           }
         } else if (k in spiHelperSettingsNeedingValidDate) {
           if (!await spiHelperValidateDate(v)) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
-            return
+            continue
           }
         }
         spiHelperSettings[k] = v
