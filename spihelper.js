@@ -3443,12 +3443,12 @@ async function spiHelperLoadSettings () {
         if (k in spiHelperValidSettings) {
           if (spiHelperValidSettings[k].indexOf(v) === -1) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
-            return
+            continue
           }
         } else if (k in spiHelperSettingsNeedingValidDate) {
           if (!await spiHelperValidateDate(v)) {
             mw.log.warn('Invalid option given in spihelper-options.js for the setting ' + k.toString())
-            return
+            continue
           }
         }
         spiHelperSettings[k] = v
