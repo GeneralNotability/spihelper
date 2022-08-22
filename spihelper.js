@@ -100,7 +100,7 @@ const spiHelperValidSettings = {
   watchArchive: ['preferences', 'watch', 'nochange', 'unwatch'],
   watchTaggedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
   watchNewCats: ['preferences', 'watch', 'nochange', 'unwatch'],
-  watchBlockedUser: ['preferences', 'watch', 'nochange', 'unwatch'],
+  watchBlockedUser: [true, false],
   clerk: [true, false],
   log: [true, false],
   reversed_log: [true, false],
