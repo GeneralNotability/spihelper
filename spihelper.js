@@ -2344,9 +2344,6 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
 
   $statusLine.html('Editing ' + $link.prop('outerHTML'))
 
-  if (!baseRevId) {
-    baseRevId = await spiHelperGetPageRev(title)
-  }
   const api = spiHelperGetAPI(title)
   const finalTitle = spiHelperStripXWikiPrefix(title)
 
@@ -2356,14 +2353,16 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     summary: summary + spihelperAdvert,
     text: newtext,
     title: finalTitle,
-    createonly: createonly,
-    baserevid: baseRevId
+    createonly: createonly
   }
   if (sectionId) {
     request.section = sectionId
   }
   if (watchExpiry) {
     request.watchlistexpiry = watchExpiry
+  }
+  if (baseRevId) {
+    request.baesrevid = baseRevId
   }
   try {
     await api.postWithToken('csrf', request)
