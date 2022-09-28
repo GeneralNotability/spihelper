@@ -1284,7 +1284,7 @@ async function spiHelperPerformActions () {
             blockSummary = cublockTemplate + ': ' + blockSummary
           }
         } else if (isIPRange) {
-          blockSummary = '{{rangeblock| ' + blockSummary +
+          blockSummary = '{{rangeblock|1= ' + blockSummary +
             (blockEntry.acb ? '' : '|create=yes') + '}}'
         }
         const blockSuccess = await spiHelperBlockUser(
