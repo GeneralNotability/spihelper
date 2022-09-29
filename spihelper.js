@@ -1284,7 +1284,7 @@ async function spiHelperPerformActions () {
             blockSummary = cublockTemplate + ': ' + blockSummary
           }
         } else if (isIPRange) {
-          blockSummary = '{{rangeblock| ' + blockSummary +
+          blockSummary = '{{rangeblock|1= ' + blockSummary +
             (blockEntry.acb ? '' : '|create=yes') + '}}'
         }
         const blockSuccess = await spiHelperBlockUser(
@@ -1592,12 +1592,13 @@ async function spiHelperPerformActions () {
         if (!sockmaster) {
           sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelperCaseName) || spiHelperCaseName
         }
+        const usePlural = matchCount > 1
         const lockComment = prompt('Please enter a comment for the global lock request (optional):', '') || ''
-        const heading = hideLockNames ? 'sockpuppet(s)' : '[[Special:CentralAuth/' + sockmaster + '|' + sockmaster + ']] sock(s)'
+        const heading = hideLockNames ? (usePlural ? 'sockpuppets' : 'sockpuppet') : '[[Special:CentralAuth/' + sockmaster + '|' + sockmaster + ']] ' + (usePlural ? 'socks' : 'sock')
         let message = '=== Global lock for ' + heading + ' ==='
         message += '\n{{status}}'
         message += '\n' + lockTemplate
-        message += '\nSockpuppet(s) found in enwiki sockpuppet investigation, see [[' + spiHelperInterwikiPrefix + spiHelperPageName + ']]. ' + lockComment + ' ~~~~'
+        message += '\n' + (usePlural ? 'Sockpuppets' : 'Sockpuppet') + ' found in enwiki sockpuppet investigation, see [[' + spiHelperInterwikiPrefix + spiHelperPageName + ']]. ' + lockComment + ' ~~~~'
 
         // Write lock request to [[meta:Steward requests/Global]]
         let srgText = await spiHelperGetPageText('meta:Steward requests/Global', false)
@@ -1757,7 +1758,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
     for (let i = 0; i < backlinks.length; i++) {
       if ((await spiHelperParseArchiveNotice(backlinks[i].title)).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')) {
         spiHelperEditPage(backlinks[i].title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
-        if (pagesChecked.indexOf(backlinks[i]).title !== -1) {
+        if (pagesChecked.indexOf(backlinks[i].title) !== -1) {
           pagesToCheck.push(backlinks[i])
         }
       }
@@ -2344,9 +2345,6 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
 
   $statusLine.html('Editing ' + $link.prop('outerHTML'))
 
-  if (!baseRevId) {
-    baseRevId = await spiHelperGetPageRev(title)
-  }
   const api = spiHelperGetAPI(title)
   const finalTitle = spiHelperStripXWikiPrefix(title)
 
@@ -2356,14 +2354,16 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     summary: summary + spihelperAdvert,
     text: newtext,
     title: finalTitle,
-    createonly: createonly,
-    baserevid: baseRevId
+    createonly: createonly
   }
   if (sectionId) {
     request.section = sectionId
   }
   if (watchExpiry) {
     request.watchlistexpiry = watchExpiry
+  }
+  if (baseRevId) {
+    request.baesrevid = baseRevId
   }
   try {
     await api.postWithToken('csrf', request)
