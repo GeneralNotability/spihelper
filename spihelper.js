@@ -1758,7 +1758,7 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
     for (let i = 0; i < backlinks.length; i++) {
       if ((await spiHelperParseArchiveNotice(backlinks[i].title)).username === currentPageToCheck.replace(/Wikipedia:Sockpuppet investigations\//g, '')) {
         spiHelperEditPage(backlinks[i].title, replacementArchiveNotice, 'Updating case following page move', false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry)
-        if (pagesChecked.indexOf(backlinks[i]).title !== -1) {
+        if (pagesChecked.indexOf(backlinks[i].title) !== -1) {
           pagesToCheck.push(backlinks[i])
         }
       }
