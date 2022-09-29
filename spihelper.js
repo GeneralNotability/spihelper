@@ -1592,12 +1592,13 @@ async function spiHelperPerformActions () {
         if (!sockmaster) {
           sockmaster = prompt('Please enter the name of the sockmaster: ', spiHelperCaseName) || spiHelperCaseName
         }
+        const usePlural = matchCount > 1
         const lockComment = prompt('Please enter a comment for the global lock request (optional):', '') || ''
-        const heading = hideLockNames ? 'sockpuppet(s)' : '[[Special:CentralAuth/' + sockmaster + '|' + sockmaster + ']] sock(s)'
+        const heading = hideLockNames ? (usePlural ? 'sockpuppets' : 'sockpuppet') : '[[Special:CentralAuth/' + sockmaster + '|' + sockmaster + ']] ' + (usePlural ? 'socks' : 'sock')
         let message = '=== Global lock for ' + heading + ' ==='
         message += '\n{{status}}'
         message += '\n' + lockTemplate
-        message += '\nSockpuppet(s) found in enwiki sockpuppet investigation, see [[' + spiHelperInterwikiPrefix + spiHelperPageName + ']]. ' + lockComment + ' ~~~~'
+        message += '\n' + (usePlural ? 'Sockpuppets' : 'Sockpuppet') + ' found in enwiki sockpuppet investigation, see [[' + spiHelperInterwikiPrefix + spiHelperPageName + ']]. ' + lockComment + ' ~~~~'
 
         // Write lock request to [[meta:Steward requests/Global]]
         let srgText = await spiHelperGetPageText('meta:Steward requests/Global', false)
