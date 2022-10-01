@@ -1753,6 +1753,9 @@ async function spiHelperPostRenameCleanup (oldCasePage) {
   let currentPageToCheck = null
   while (pagesToCheck.length !== 0) {
     currentPageToCheck = pagesToCheck.pop()
+    if (currentPageToCheck === spiHelperPageName || currentPageToCheck === oldCasePage) {
+      continue
+    }
     pagesChecked.push(currentPageToCheck)
     const backlinks = await spiHelperGetSPIBacklinks(currentPageToCheck)
     for (let i = 0; i < backlinks.length; i++) {
@@ -2363,7 +2366,7 @@ async function spiHelperEditPage (title, newtext, summary, createonly, watch, wa
     request.watchlistexpiry = watchExpiry
   }
   if (baseRevId) {
-    request.baserevid = baseRevId
+    request.baesrevid = baseRevId
   }
   try {
     await api.postWithToken('csrf', request)
