@@ -231,6 +231,7 @@ const spiHelperAdminTemplates = [
   { label: 'Admin/clerk templates', selected: true, value: '', disabled: true },
   { label: 'Duck', selected: false, value: '{{duck}}' },
   { label: 'Megaphone Duck', selected: false, value: '{{megaphone duck}}' },
+  { label: 'IP blocked', selected: false, value: '{{IPblock}}' },
   { label: 'Blocked and tagged', selected: false, value: '{{bnt}}' },
   { label: 'Blocked, no tags', selected: false, value: '{{bwt}}' },
   { label: 'Blocked, awaiting tags', selected: false, value: '{{sblock}}' },
