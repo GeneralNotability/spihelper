@@ -1443,7 +1443,7 @@ async function spiHelperPerformActions () {
     logMessage += '\n** Updated archivenotice'
   }
 
-  let loggingPromise
+  let loggingPromise = Promise.all([Promise.resolve()])
   // Possibly build these inside the promises themselves?
   let loggingArrays = {
     blocked: [], tagged: []
@@ -1713,14 +1713,14 @@ async function spiHelperPerformActions () {
     }
   }
   if (spiHelperSettings.log) {
-      loggingPromise?.then(async () => {
+    loggingPromise.then(async () => {
         if (loggingArrays.blocked.length > 0) {
             logMessage += '\n** blocked ' + loggingArrays.blocked.join(', ')
         }
         if (loggingArrays.tagged.length > 0) {
             logMessage += '\n** tagged ' + loggingArrays.tagged.join(', ')
         }
-      await spiHelperLog(logMessage)
+        await spiHelperLog(logMessage)
     })
   }
 
