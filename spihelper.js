@@ -1369,7 +1369,7 @@ async function spiHelperPerformActions () {
       newCaseStatus = oldCaseStatus
     }
 
-    if (spiHelperActionsSelected.Case_act && newCaseStatus !== 'noaction') {
+    if (spiHelperActionsSelected.Case_act && newCaseStatus !== 'noaction' && newCaseStatus !== oldCaseStatus) {
       switch (newCaseStatus) {
         case 'reopen':
           newCaseStatus = 'open'
