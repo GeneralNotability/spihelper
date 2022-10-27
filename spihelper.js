@@ -979,7 +979,7 @@ async function spiHelperOneClickArchive () {
  * @param {string} altmaster The username of the alternate master to tag for
  * @return {Promise<boolean>} Whether the tag was successfully applied
  */
-async function spiHelperTagUser(tagEntry, tagNonLocalAccounts, sockmaster, altmaster) {
+async function spiHelperTagUser (tagEntry, tagNonLocalAccounts, sockmaster, altmaster) {
   if (mw.util.isIPAddress(tagEntry.username, true)) {
     return false // do not support tagging IPs
   }
@@ -1060,7 +1060,6 @@ async function spiHelperTagUser(tagEntry, tagNonLocalAccounts, sockmaster, altma
   }
   spiHelperEditPage('User:' + tagEntry.username, tagText, 'Adding sockpuppetry tag per [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]',
     false, spiHelperSettings.watchTaggedUser, spiHelperSettings.watchTaggedUserExpiry)
-      
   return true
 }
 
@@ -1075,7 +1074,7 @@ async function spiHelperTagUser(tagEntry, tagNonLocalAccounts, sockmaster, altma
  * @param {string} sockmaster Username of the sockmaster
  * @return {Promise<boolean>} Whether the block succeeded
  */
-async function spiHelperBlockUser(blockEntry, cuBlock, cuBlockOnly, overrideExisting, blankTalk, sockmaster) {
+async function spiHelperBlockUser (blockEntry, cuBlock, cuBlockOnly, overrideExisting, blankTalk, sockmaster) {
   const blockReason = await spiHelperGetUserBlockReason(blockEntry.username)
   if (!spiHelperIsCheckuser() && overrideExisting &&
     spiHelperCUBlockRegex.exec(blockReason)) {
@@ -1084,7 +1083,7 @@ async function spiHelperBlockUser(blockEntry, cuBlock, cuBlockOnly, overrideExis
     if (!confirm('User ' + blockEntry.username + ' appears to be CheckUser-blocked, are you SURE you want to re-block them?\n' +
       'Current block message:\n' + blockReason
     )) {
-      return false;
+      return false
     }
   }
   const isIP = mw.util.isIPAddress(blockEntry.username, true)
@@ -1445,7 +1444,7 @@ async function spiHelperPerformActions () {
 
   let loggingPromise = Promise.all([Promise.resolve()])
   // Possibly build these inside the promises themselves?
-  let loggingArrays = {
+  const loggingArrays = {
     blocked: [], tagged: []
   }
   if (spiHelperActionsSelected.Block) {
@@ -1482,7 +1481,7 @@ async function spiHelperPerformActions () {
             loggingArrays.blocked.push('{{noping|' + blockEntry.username + '}}')
           }
 
-          let tagEntry = spiHelperTags.find(tag => tag.username == blockEntry.username)
+          const tagEntry = spiHelperTags.find((tag) => tag.username === blockEntry.username)
           if (typeof tagEntry !== 'undefined') {
             await spiHelperTagUser(tagEntry, tagNonLocalAccounts, sockmaster, altmaster).then((success) => {
               if (success) {
@@ -1509,10 +1508,10 @@ async function spiHelperPerformActions () {
       let needsPurge = false
       // True for each we need to check if the respective category (e.g.
       // "Suspected sockpuppets of Test") exists
-      let checkConfirmedCat = spiHelperTags.some((tagEntry => tagEntry.tag == 'proven'))
-      let checkSuspectedCat = spiHelperTags.some((tagEntry => tagEntry.tag == 'blocked'))
-      let checkAltSuspectedCat = altmaster !== '' ? spiHelperTags.some((tagEntry => tagEntry.altmasterTag !== '' && tagEntry.altmasterTag == 'suspected')) : false
-      let checkAltConfirmedCat = altmaster !== '' ? spiHelperTags.some((tagEntry => tagEntry.altmasterTag !== '' && tagEntry.altmasterTag == 'proven')) : false
+      const checkConfirmedCat = spiHelperTags.some((tagEntry) => tagEntry.tag === 'proven')
+      const checkSuspectedCat = spiHelperTags.some((tagEntry) => tagEntry.tag === 'blocked')
+      const checkAltSuspectedCat = altmaster !== '' ? spiHelperTags.some((tagEntry) => tagEntry.altmasterTag !== '' && tagEntry.altmasterTag === 'suspected') : false
+      const checkAltConfirmedCat = altmaster !== '' ? spiHelperTags.some((tagEntry) => tagEntry.altmasterTag !== '' && tagEntry.altmasterTag === 'proven') : false
 
       if (checkAltConfirmedCat) {
         const catname = 'Category:Wikipedia sockpuppets of ' + altmaster
@@ -1714,13 +1713,13 @@ async function spiHelperPerformActions () {
   }
   if (spiHelperSettings.log) {
     loggingPromise.then(async () => {
-        if (loggingArrays.blocked.length > 0) {
-            logMessage += '\n** blocked ' + loggingArrays.blocked.join(', ')
-        }
-        if (loggingArrays.tagged.length > 0) {
-            logMessage += '\n** tagged ' + loggingArrays.tagged.join(', ')
-        }
-        await spiHelperLog(logMessage)
+      if (loggingArrays.blocked.length > 0) {
+        logMessage += '\n** blocked ' + loggingArrays.blocked.join(', ')
+      }
+      if (loggingArrays.tagged.length > 0) {
+        logMessage += '\n** tagged ' + loggingArrays.tagged.join(', ')
+      }
+      await spiHelperLog(logMessage)
     })
   }
 
@@ -2213,9 +2212,9 @@ async function spiHelperGetPostExpandSize (title, sectionId = null) {
     }
   } catch (error) {
     // Something's gone wrong, just return 0
-  } finally {
-    return 0
   }
+
+  return 0
 }
 
 /**
@@ -3136,14 +3135,15 @@ async function spiHelperSetCheckboxesBySection () {
   $warningText.hide()
 
   const $archiveBox = $('#spiHelper_Archive', $topView)
-  const $blockBox = $('#spiHelper_BlockTag', $topView)
   const $closeBox = $('#spiHelper_Close', $topView)
-  const $commentBox = $('#spiHelper_Comment', $topView)
   const $moveBox = $('#spiHelper_Move', $topView)
+  /*
+  const $blockBox = $('#spiHelper_BlockTag', $topView)
+  const $commentBox = $('#spiHelper_Comment', $topView)
   const $caseActionBox = $('#spiHelper_Case_Action', $topView)
   const $spiMgmtBox = $('#spiHelper_SpiMgmt', $topView)
 
-  /* Start by unchecking everything
+  // Start by unchecking everything
   $archiveBox.prop('checked', false)
   $blockBox.prop('checked', false)
   $closeBox.prop('checked', false)
