@@ -2632,9 +2632,9 @@ async function spiHelperDoesUserExistLocally (user) {
     const response = await api.get({
       action: 'query',
       list: 'allusers',
-      agulimit: '1',
-      agufrom: user,
-      aguto: user
+      aulimit: '1',
+      aufrom: user,
+      auto: user
     })
     if (response.query.allusers.length === 0) {
       // If the length is 0, then we couldn't find the local account so return false
