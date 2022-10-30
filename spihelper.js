@@ -1053,7 +1053,7 @@ async function spiHelperTagUser (tagEntry, tagNonLocalAccounts, sockmaster, altm
 | 1 = ${sockmasterName}
 | 2 = ${tag}
 | locked = ${isLocked}
-| notblocked = ${!isNotBlocked ? 'yes' : 'no'}
+| notblocked = ${isNotBlocked ? 'yes' : 'no'}
 | altmaster = ${altmasterName}
 | altmaster-status = ${altmasterTag}
 }}`
