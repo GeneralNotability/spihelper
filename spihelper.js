@@ -237,6 +237,7 @@ const spiHelperAdminTemplates = [
   { label: 'Blocked, awaiting tags', selected: false, value: '{{sblock}}' },
   { label: 'Blocked, tagged, closed', selected: false, value: '{{btc}}' },
   { label: 'Requested actions completed, closing', selected: false, value: '{{Action and close}}' },
+  { label: 'Closing without action', selected: false, value: '{{Closing without action}}' },
   { label: 'Diffs needed', selected: false, value: '{{DiffsNeeded|moreinfo}}' },
   { label: 'Locks requested', selected: false, value: '{{GlobalLocksRequested}}' }
 ]
