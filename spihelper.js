@@ -83,6 +83,8 @@ const spiHelperSettings = {
   tickArchiveWhenCaseClosed: true,
   // Use checkuserblock-account when CU blocking. False when not a CU, by default true when a CU
   useCheckuserblockAccount: false,
+  // Default IPv6 listings to /64 in the block/tag socks menu
+  displayIPv6As64: true,
   // These are for debugging to view as other roles. If you're picking apart the code and
   // decide to set these (especially the CU option), it is YOUR responsibility to make sure
   // you don't do something that violates policy
@@ -769,6 +771,9 @@ async function spiHelperGenerateForm () {
         if (!isIP && !likelyusers.includes(username)) {
           likelyusers.push(username)
         } else if (isIP && !likelyips.includes(username)) {
+          if (spiHelperSettings.displayIPv6As64 && mw.util.isIPv6Address(username, false)) {
+            likelyips.push(username.split(':').slice(0, 4).concat('0', '0', '0', '0').join(':') + '/64')
+          }
           likelyips.push(username)
         }
       }
@@ -792,6 +797,9 @@ async function spiHelperGenerateForm () {
           if (username !== '') {
             const isIP = mw.util.isIPAddress(username, true)
             if (isIP && !likelyips.includes(username)) {
+              if (spiHelperSettings.displayIPv6As64 && mw.util.isIPv6Address(username, false)) {
+                likelyips.push(username.split(':').slice(0, 4).concat('0', '0', '0', '0').join(':') + '/64')
+              }
               likelyips.push(username)
             } else if (!isIP && !likelyusers.includes(username)) {
               likelyusers.push(username)
@@ -801,7 +809,7 @@ async function spiHelperGenerateForm () {
       }
     }
     // eslint-disable-next-line no-useless-escape
-    const userRegex = /{{\s*(?:user|vandal|IP|noping|noping2)[^\|}{]*?\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
+    const userRegex = /{{[^\|}{]*?(?:user|vandal|IP|noping)[^\|}{]*?\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
     const userresults = pagetext.match(userRegex)
     if (userresults) {
       for (let i = 0; i < userresults.length; i++) {
