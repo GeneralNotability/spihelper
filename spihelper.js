@@ -773,6 +773,7 @@ async function spiHelperGenerateForm () {
         } else if (isIP && !likelyips.includes(username)) {
           if (spiHelperSettings.displayIPv6As64 && mw.util.isIPv6Address(username, false)) {
             likelyips.push(username.split(':').slice(0, 4).concat('0', '0', '0', '0').join(':') + '/64')
+            continue
           }
           likelyips.push(username)
         }
@@ -799,6 +800,7 @@ async function spiHelperGenerateForm () {
             if (isIP && !likelyips.includes(username)) {
               if (spiHelperSettings.displayIPv6As64 && mw.util.isIPv6Address(username, false)) {
                 likelyips.push(username.split(':').slice(0, 4).concat('0', '0', '0', '0').join(':') + '/64')
+                continue
               }
               likelyips.push(username)
             } else if (!isIP && !likelyusers.includes(username)) {
