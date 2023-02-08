@@ -351,6 +351,7 @@ async function spiHelperInit () {
 
   // Narrow search scope
   const $topView = $('#spiHelper_topViewDiv', document)
+  updateForRole($topView)
 
   if (spiHelperArchiveNoticeParams.username === null) {
     // No archive notice was found
@@ -395,11 +396,9 @@ async function spiHelperInit () {
   // All-sections selector...deliberately at the bottom, the default should be the first section
   $('<option>').val('all').text('All Sections').appendTo($sectionSelect)
 
-  updateForRole($topView)
-
   // Only show options suitable for the archive subpage when running on the archives
-  if (spiHelperIsThisPageAnArchive) {
-    $('.spiHelper_notOnArchive', $topView).hide()
+  if (!spiHelperIsThisPageAnArchive) {
+    $('.spiHelper_notOnArchive', $topView).show()
   }
   // Set the checkboxes to their default states
   spiHelperSetCheckboxesBySection()
@@ -412,7 +411,7 @@ async function spiHelperInit () {
 const spiHelperActionViewHTML = `
 <div id="spiHelper_actionViewDiv">
   <small><a id="spiHelper_backLink">Back to top menu</a></small>
-  <br />
+  <br>
   <h3>Handling SPI case</h3>
   <div id="spiHelper_actionView">
     <h4>Changing case status</h4>
@@ -560,6 +559,7 @@ const spiHelperActionViewHTML = `
     </div>
     <div class="spihelper-previewbox" id="spiHelper_previewBox" hidden></div>
   </div>
+  <br>
   <input type="button" id="spiHelper_performActions" value="Done" />
 </div>
 `
@@ -598,6 +598,7 @@ async function spiHelperGenerateForm () {
 
   // Reduce the scope that jquery operates on
   const $actionView = $('#spiHelper_actionViewDiv', document)
+  updateForRole($actionView)
 
   // Wire up the action view
   $('#spiHelper_backLink', $actionView).one('click', () => {
@@ -687,8 +688,8 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_CaseAction', $actionView).on('change', function (e) {
       spiHelperCaseActionUpdated($(e.target))
     })
-  } else {
-    $('#spiHelper_actionView', $actionView).hide()
+
+    $('#spiHelper_actionView', $actionView).show()
   }
 
   if (spiHelperActionsSelected.SpiMgmt) {
@@ -699,18 +700,18 @@ async function spiHelperGenerateForm () {
     $xwikiBox.prop('checked', spiHelperArchiveNoticeParams.xwiki)
     $denyBox.prop('checked', spiHelperArchiveNoticeParams.deny)
     $notalkBox.prop('checked', spiHelperArchiveNoticeParams.notalk)
-  } else {
-    $('#spiHelper_spiMgmtView', $actionView).hide()
+
+    $('#spiHelper_spiMgmtView', $actionView).show()
   }
 
-  if (!spiHelperActionsSelected.Close) {
-    $('#spiHelper_closeView', $actionView).hide()
+  if (spiHelperActionsSelected.Close) {
+    $('#spiHelper_closeView', $actionView).show()
   }
-  if (!spiHelperActionsSelected.Archive) {
-    $('#spiHelper_archiveView', $actionView).hide()
+  if (spiHelperActionsSelected.Archive) {
+    $('#spiHelper_archiveView', $actionView).show()
   }
   // Only give the option to comment if we selected a specific section and we are not running on an archive subpage
-  if (spiHelperSectionId && !spiHelperIsThisPageAnArchive) {
+  if (spiHelperSectionId && spiHelperActionsSelected.Note && !spiHelperIsThisPageAnArchive) {
     // generate the note prefixes
     /** @type {SelectOption[]} */
     const spiHelperNoteTemplates = [
@@ -743,8 +744,7 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_previewLink', $actionView).on('click', function () {
       spiHelperPreviewText()
     })
-  } else {
-    $('#spiHelper_commentView', $actionView).hide()
+    $('#spiHelper_commentView', $actionView).show()
   }
   if (spiHelperActionsSelected.Rename) {
     if (spiHelperSectionId) {
@@ -752,8 +752,7 @@ async function spiHelperGenerateForm () {
     } else {
       $('#spiHelper_moveHeader', $actionView).text('Move/merge full case')
     }
-  } else {
-    $('#spiHelper_moveView', $actionView).hide()
+    $('#spiHelper_moveView', $actionView).show()
   }
   if (spiHelperActionsSelected.Block || spiHelperActionsSelected.Link) {
     // eslint-disable-next-line no-useless-escape
@@ -827,6 +826,8 @@ async function spiHelperGenerateForm () {
       }
     }
     if (spiHelperActionsSelected.Block) {
+      // Show generation in progress so not to make people think its broken
+      $('#spiHelper_blockTagView', $actionView).show()
       if (spiHelperIsAdmin()) {
         $('#spiHelper_blockTagHeader', $actionView).text('Blocking and tagging socks')
       } else {
@@ -882,8 +883,6 @@ async function spiHelperGenerateForm () {
         spiHelperBlockTableUserCount++
         await spiHelperGenerateBlockTableLine(possibleips[i], false, spiHelperBlockTableUserCount)
       }
-    } else {
-      $('#spiHelper_blockTagView', $actionView).hide()
     }
     if (spiHelperActionsSelected.Link) {
       // Wire up the "select all" options
@@ -922,19 +921,14 @@ async function spiHelperGenerateForm () {
         spiHelperLinkTableUserCount++
         await spiHelperGenerateLinksTableLine(possibleips[i], spiHelperLinkTableUserCount)
       }
-    } else {
-      $('#spiHelper_sockLinksView', $actionView).hide()
+      $('#spiHelper_sockLinksView', $actionView).show()
     }
-  } else {
-    $('#spiHelper_blockTagView', $actionView).hide()
-    $('#spiHelper_sockLinksView', $actionView).hide()
+    $('#spiHelper_blockTagView', $actionView).show()
   }
   // Wire up the submit button
   $('#spiHelper_performActions', $actionView).one('click', () => {
     spiHelperPerformActions()
   })
-
-  updateForRole($actionView)
 }
 
 /**
