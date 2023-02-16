@@ -7,7 +7,7 @@
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
-importStylesheet('User:GeneralNotability/spihelper.css')
+importStylesheet('User:GeneralNotability/spihelper-dev.css')
 importScript('User:Timotheus Canens/displaymessage.js')
 
 // Typedefs
