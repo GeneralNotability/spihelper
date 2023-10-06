@@ -1049,7 +1049,7 @@ async function spiHelperTagUser (tagEntry, tagNonLocalAccounts, sockmaster, altm
     if (altmasterName && isMaster) {
       // If we have an altmaster and we're the master, swap a few values around
       sockmasterName = altmasterName
-      tag = altmasterTag
+      tag = 'blocked' ? altmasterTag === 'suspected' : altmasterTag
       altmasterName = ''
       altmasterTag = ''
       tagText += '\n'
