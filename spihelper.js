@@ -1773,7 +1773,7 @@ async function spiHelperLog (logString) {
  */
 async function spiHelperPostRenameCleanup (oldCasePage) {
   'use strict'
-  const replacementArchiveNotice = '<noinclude>__TOC__</noinclude>\n' + spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams) + '\n{{SPIpriorcases}}'
+  const replacementArchiveNotice = spiHelperMakeNewArchiveNotice(spiHelperCaseName, spiHelperArchiveNoticeParams)
   const oldCaseName = oldCasePage.replace(/Wikipedia:Sockpuppet investigations\//g, '')
 
   // Update previous SPI redirects to this location
