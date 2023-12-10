@@ -3553,7 +3553,8 @@ function spiHelperNormalizeUsername (username) {
     username = username.toUpperCase()
   } else {
     // For actual usernames, make sure the first letter is capitalized
-    username = username.charAt(0).toUpperCase() + username.slice(1)
+    // Ensure consistent case conversions with PHP as per https://phabricator.wikimedia.org/T292824
+    username = new mw.Title(username).getMain()
   }
   return username
 }
