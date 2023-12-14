@@ -316,7 +316,7 @@ const spiHelperTopViewHTML = `
       <label for="spiHelper_userInfo">Sock links</label>
     </li>
     <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
-      <input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
+      <input type="checkbox" checked="checked" name="spiHelper_Comment" id="spiHelper_Comment" />
       <label for="spiHelper_Comment">Note/comment</label>
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
