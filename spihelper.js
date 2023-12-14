@@ -2,7 +2,7 @@
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
 // With contributions from 0xDeadbeef, DatGuy, Dreamy Jazz, L235, Tamzin, TheresNoTime, and Xiplus
-// v2.9.0 "No sorcery threats"
+// v2.9.1 "No sorcery threats"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
 
