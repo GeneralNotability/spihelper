@@ -1,7 +1,7 @@
 // <nowiki>
 // @ts-check
 // GeneralNotability's rewrite of Tim's SPI helper script
-// With contributions from Dreamy Jazz, L235, Tamzin, TheresNoTime, and Xiplus
+// With contributions from 0xDeadbeef, DatGuy, Dreamy Jazz, L235, Tamzin, TheresNoTime, and Xiplus
 // v2.8.2 "Cabal Decree"
 
 /* global mw, $, importStylesheet, importScript, displayMessage, spiHelperCustomOpts */
