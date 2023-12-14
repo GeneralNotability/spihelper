@@ -3551,7 +3551,7 @@ function spiHelperNormalizeUsername (username) {
   if (mw.util.isIPAddress(username, true)) {
     // For IP addresses, capitalize them (really only applies to IPv6)
     username = username.toUpperCase()
-  } else {
+  } else if (username) {
     // For actual usernames, make sure the first letter is capitalized
     // Ensure consistent case conversions with PHP as per https://phabricator.wikimedia.org/T292824
     username = new mw.Title(username).getMain()
