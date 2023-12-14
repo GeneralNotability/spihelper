@@ -18,6 +18,14 @@
     width: 10vw;
 }
 
+.spiHelper_notOnArchive {
+    display: none;
+}
+
 #spiHelper_userInfoTable th {
     padding: 0 2px;
+}
+
+#spiHelper_actionViewDiv > div {
+    display: none;
 }
