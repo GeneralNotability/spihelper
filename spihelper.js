@@ -316,7 +316,7 @@ const spiHelperTopViewHTML = `
       <label for="spiHelper_userInfo">Sock links</label>
     </li>
     <li id="spiHelper_commentLine" class="spiHelper_singleCaseOnly spiHelper_notOnArchive">
-      <input type="checkbox" checked="checked" name="spiHelper_Comment" id="spiHelper_Comment" />
+      <input type="checkbox" name="spiHelper_Comment" id="spiHelper_Comment" />
       <label for="spiHelper_Comment">Note/comment</label>
     </li>
     <li id="spiHelper_closeLine" class="spiHelper_adminClerkClass spiHelper_singleCaseOnly spiHelper_notOnArchive">
@@ -580,8 +580,8 @@ async function spiHelperGenerateForm () {
   spiHelperActionsSelected.Case_act = $('#spiHelper_Case_Action', $topView).prop('checked')
   spiHelperActionsSelected.Block = $('#spiHelper_BlockTag', $topView).prop('checked')
   spiHelperActionsSelected.Link = $('#spiHelper_userInfo', $topView).prop('checked')
-  spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked')
   spiHelperActionsSelected.Close = $('#spiHelper_Close', $topView).prop('checked')
+  spiHelperActionsSelected.Note = $('#spiHelper_Comment', $topView).prop('checked') || spiHelperActionsSelected.Case_act || spiHelperActionsSelected.Block || spiHelperActionsSelected.Close
   spiHelperActionsSelected.Rename = $('#spiHelper_Move', $topView).prop('checked')
   spiHelperActionsSelected.Archive = $('#spiHelper_Archive', $topView).prop('checked')
   spiHelperActionsSelected.SpiMgmt = $('#spiHelper_SpiMgmt', $topView).prop('checked')
