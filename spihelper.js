@@ -3542,8 +3542,6 @@ function spiHelperIsClerk () {
  * @return {string} Normalized username
  */
 function spiHelperNormalizeUsername (username) {
-  // Replace underscores with spaces
-  username = username.replace(/_/g, ' ')
   // Get rid of bad hidden characters
   username = username.replace(spiHelperHiddenCharNormRegex, '')
   // Remove leading and trailing spaces
@@ -3554,7 +3552,7 @@ function spiHelperNormalizeUsername (username) {
   } else if (username) {
     // For actual usernames, make sure the first letter is capitalized
     // Ensure consistent case conversions with PHP as per https://phabricator.wikimedia.org/T292824
-    username = new mw.Title(username).getMain()
+    username = new mw.Title(username).getMainText()
   }
   return username
 }
