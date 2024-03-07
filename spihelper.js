@@ -8,8 +8,9 @@
 
 // Adapted from [[User:Mr.Z-man/closeAFD]]
 importStylesheet('User:GeneralNotability/spihelper-dev.css')
+if(mw.config.get('skin') == 'minerva')
+	importStylesheet('User:Sir Sputnik/spihelper-minerva.css')
 importScript('User:Timotheus Canens/displaymessage.js')
-
 // Typedefs
 /**
  * @typedef SelectOption
@@ -270,6 +271,7 @@ const spiHelperSectionRegex = /^(?:===[^=]*===|=====[^=]*=====)\s*$/m
 const spiHelperHiddenCharNormRegex = /\u200E/g
 
 /* Other globals */
+const spiHelperIsMobile = mw.config.get('skin') == 'minerva'
 
 /** @type{string} Advert to append to the edit summary of edits */
 const spihelperAdvert = ' (using [[:w:en:WP:SPIH|spihelper.js]])'
@@ -294,7 +296,7 @@ if (mw.config.get('wgPageName').includes('Wikipedia:Sockpuppet_investigations/')
 // Main functions - do the meat of the processing and UI work
 
 const spiHelperTopViewHTML = `
-<div id="spiHelper_topViewDiv">
+<div id="spiHelper_topViewDiv" class="spiHelper_ViewDiv">
   <h3>Handling SPI case</h3>
   <select id="spiHelper_sectionSelect"></select>
   <h4 id="spiHelper_warning" class="spihelper-errortext" hidden></h4>
@@ -409,7 +411,7 @@ async function spiHelperInit () {
 }
 
 const spiHelperActionViewHTML = `
-<div id="spiHelper_actionViewDiv">
+<div id="spiHelper_actionViewDiv" class="spiHelper_ViewDiv">
   <small><a id="spiHelper_backLink">Back to top menu</a></small>
   <br>
   <h3>Handling SPI case</h3>
@@ -440,12 +442,30 @@ const spiHelperActionViewHTML = `
     <table id="spiHelper_userInfoTable" style="border-collapse:collapse;">
       <tr>
         <th>Username</th>
-        <th><span title="Editor interaction analyser" class="rt-commentedText spihelper-hovertext">Interaction analyser</span></th>
-        <th><span title="Interaction timeline" class="rt-commentedText spihelper-hovertext">Interaction timeline</span></th>
-        <th><span title="Timecard comparison - SPI tools" class="rt-commentedText spihelper-hovertext">Timecard</span></th>
-        <th class="spiHelper_adminClass"><span title="Consolidated timeline (login needed) - SPI tools" class="rt-commentedText spihelper-hovertext">Consolidated timeline</span></th>
-        <th class="spiHelper_adminClass"><span title="Pages - SPI tools (login needed)" class="rt-commentedText spihelper-hovertext">Pages</span></th>
-        <th class="spiHelper_cuClass"><span title="CheckUser wiki search" class="rt-commentedText spihelper-hovertext">CU wiki</span></th>
+        <th>
+          <span title="Editor interaction analyser" class="rt-commentedText spihelper-hovertext user-link-dt">Interaction analyser</span>
+          <span title="Editor interaction analyser" class="rt-commentedText spihelper-hovertext user-link-mobile">IA</span>
+        </th>
+        <th>
+          <span title="Interaction timeline" class="rt-commentedText spihelper-hovertext user-link-dt">Interaction timeline</span>
+          <span title="Interaction timeline" class="rt-commentedText spihelper-hovertext user-link-mobile">IT</span>
+        </th>
+        <th>
+          <span title="Timecard comparison - SPI tools" class="rt-commentedText spihelper-hovertext user-link-dt">Timecard</span>
+          <span title="Timecard comparison - SPI tools" class="rt-commentedText spihelper-hovertext user-link-mobile">TC</span>
+        </th>
+        <th class="spiHelper_adminClass">
+          <span title="Consolidated timeline (login needed) - SPI tools" class="rt-commentedText spihelper-hovertext user-link-dt">Consolidated timeline</span>
+          <span title="Consolidated timeline (login needed) - SPI tools" class="rt-commentedText spihelper-hovertext user-link-mobile">CT</span>
+        </th>
+        <th class="spiHelper_adminClass">
+          <span title="Pages - SPI tools (login needed)" class="rt-commentedText spihelper-hovertext user-link-dt">Pages</span>
+          <span title="Pages - SPI tools (login needed)" class="rt-commentedText spihelper-hovertext user-link-mobile">PG</span>
+        </th>
+        <th class="spiHelper_cuClass">
+          <span title="CheckUser wiki search" class="rt-commentedText spihelper-hovertext user-link-dt">CU wiki</span>
+          <span title="CheckUser wiki search" class="rt-commentedText spihelper-hovertext user-link-mobile">CU</span>
+        </th>
       </tr>
       <tr style="border-bottom:2px solid black">
         <td style="text-align:center;">(All users)</td>
@@ -454,7 +474,7 @@ const spiHelperActionViewHTML = `
         <td style="text-align:center;"><input type="checkbox" id="spiHelper_link_timecardSPITools"/></td>
         <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_consolidatedTimelineSPITools"/></td>
         <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_pagesSPITools"/></td>
-        <td style="text-align:center;" class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
+        <td style="text-align:center;" class="spiHelper_cuClass"><input type="checkbox" id="spiHelper_link_checkUserWikiSearch"/></td>
       </tr>
     </table>
     <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
@@ -502,31 +522,33 @@ const spiHelperActionViewHTML = `
       </li>
     </ul>
     <table id="spiHelper_blockTable" style="border-collapse:collapse;">
-      <tr>
-        <th>Username</th>
-        <th class="spiHelper_adminClass"><span title="Block user" class="rt-commentedText spihelper-hovertext">Blk?</span></th>
-        <th class="spiHelper_adminClass"><span title="Block duration" class="rt-commentedText spihelper-hovertext">Duration</span></th>
-        <th class="spiHelper_adminClass"><span title="Account creation blocked" class="rt-commentedText spihelper-hovertext">ACB</span></th>
-        <th class="spiHelper_adminClass"><span title="Autoblock (for logged-in users)/Anonymous-only (for IPs)" class="rt-commentedText spihelper-hovertext">AB/AO</span></th>
-        <th class="spiHelper_adminClass"><span title="Disable talk page access" class="rt-commentedText spihelper-hovertext">NTP</span></th>
-        <th class="spiHelper_adminClass"><span title="Disable email" class="rt-commentedText spihelper-hovertext">NEM</span></th>
-        <th>Tag</th>
-        <th><span title="Tag the user with a suspected alternate master" class="rt-commentedText spihelper-hovertext">Alt Master</span></th>
-        <th><span title="Request a global lock at Meta:SRG" class="rt-commentedText spihelper-hovertext">Req Lock?</span></th>
-      </tr>
-      <tr style="border-bottom:2px solid black">
-        <td style="text-align:center;">(All users)</td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_doblock"/></td>
-        <td class="spiHelper_adminClass"></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_acb" checked="checked"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_ab" checked="checked"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_tp"/></td>
-        <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_email"/></td>
-        <td><select id="spiHelper_block_tag"></select></td>
-        <td><select id="spiHelper_block_tag_altmaster"></select></td>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th class="spiHelper_adminClass"><span title="Block user" class="rt-commentedText spihelper-hovertext">Blk?</span></th>
+          <th class="spiHelper_adminClass"><span title="Block duration" class="rt-commentedText spihelper-hovertext">Duration</span></th>
+          <th class="spiHelper_adminClass"><span title="Account creation blocked" class="rt-commentedText spihelper-hovertext">ACB</span></th>
+          <th class="spiHelper_adminClass"><span title="Autoblock (for logged-in users)/Anonymous-only (for IPs)" class="rt-commentedText spihelper-hovertext">AB/AO</span></th>
+          <th class="spiHelper_adminClass"><span title="Disable talk page access" class="rt-commentedText spihelper-hovertext">NTP</span></th>
+          <th class="spiHelper_adminClass"><span title="Disable email" class="rt-commentedText spihelper-hovertext">NEM</span></th>
+          <th>Tag</th>
+          <th><span title="Tag the user with a suspected alternate master" class="rt-commentedText spihelper-hovertext">Alt Master</span></th>
+          <th><span title="Request a global lock at Meta:SRG" class="rt-commentedText spihelper-hovertext">Req Lock?</span></th>
+        </tr>
+        <tr id="spiHelper_block_allusers">
+          <td style="text-align:center;">(All users)</td>
+          <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_doblock"/></td>
+          <td class="spiHelper_adminClass"></td>
+          <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_acb" checked="checked"/></td>
+          <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_ab" checked="checked"/></td>
+          <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_tp"/></td>
+          <td class="spiHelper_adminClass"><input type="checkbox" id="spiHelper_block_email"/></td>
+          <td><select id="spiHelper_block_tag"></select></td>
+          <td><select id="spiHelper_block_tag_altmaster"></select></td>
   
-        <td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
-      </tr>
+         <td><input type="checkbox" name="spiHelper_block_lock_all" id="spiHelper_block_lock"/></td>
+        </tr>
+      </thead>
     </table>
     <span><input type="button" id="moreSerks" value="Add Row" onclick="spiHelperAddBlankUserLine('block');"/></span>
   </div>
@@ -833,6 +855,8 @@ async function spiHelperGenerateForm () {
       } else {
         $('#spiHelper_blockTagHeader', $actionView).text('Tagging socks')
       }
+      if(spiHelperIsMobile)
+        spiHelperInitMobileBlockTable();
       // Wire up the "select all" options
       $('#spiHelper_block_doblock', $actionView).on('click', function (e) {
         spiHelperSetAllTableColumnOpts($(e.target), 'block')
@@ -922,8 +946,14 @@ async function spiHelperGenerateForm () {
         await spiHelperGenerateLinksTableLine(possibleips[i], spiHelperLinkTableUserCount)
       }
       $('#spiHelper_sockLinksView', $actionView).show()
+      if(spiHelperIsMobile)
+        $('.user-link-dt').hide();
+      else
+        $('.user-link-mobile').hide();
     }
     $('#spiHelper_blockTagView', $actionView).show()
+    if(spiHelperIsMobile)
+        spiHelperInitMobileBlockTable();
   }
   // Wire up the submit button
   $('#spiHelper_performActions', $actionView).one('click', () => {
@@ -3043,28 +3073,29 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   const $table = $('#spiHelper_blockTable', document)
 
   const $row = $('<tr>')
+  const $adminRow = spiHelperIsMobile ? $('<tr>').addClass('spiHelper_adminClass') : $row
   // Username
   $('<td>').append($('<input>').attr('type', 'text').attr('id', 'spiHelper_block_username' + id)
     .val(name).addClass('.spihelper-widthlimit')).appendTo($row)
   // Block checkbox (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_doblock' + id).prop('checked', block)).appendTo($row)
+    .attr('id', 'spiHelper_block_doblock' + id).prop('checked', block)).appendTo($adminRow)
   // Block duration (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'text')
     .attr('id', 'spiHelper_block_duration' + id).val(duration)
-    .addClass('.spihelper-widthlimit')).appendTo($row)
+    .addClass('.spihelper-widthlimit')).appendTo($adminRow)
   // Account creation blocked (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_acb' + id).prop('checked', acb)).appendTo($row)
+    .attr('id', 'spiHelper_block_acb' + id).prop('checked', acb)).appendTo($adminRow)
   // Autoblock (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_ab' + id).prop('checked', ab)).appendTo($row)
+    .attr('id', 'spiHelper_block_ab' + id).prop('checked', ab)).appendTo($adminRow)
   // Revoke talk page access (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_tp' + id).prop('checked', ntp)).appendTo($row)
+    .attr('id', 'spiHelper_block_tp' + id).prop('checked', ntp)).appendTo($adminRow)
   // Block email access (only for admins)
   $('<td>').addClass('spiHelper_adminClass').append($('<input>').attr('type', 'checkbox')
-    .attr('id', 'spiHelper_block_email' + id).prop('checked', nem)).appendTo($row)
+    .attr('id', 'spiHelper_block_email' + id).prop('checked', nem)).appendTo($adminRow)
   // Tag select box
   $('<td>').append($('<select>').attr('id', 'spiHelper_block_tag' + id)
     .val(name)).appendTo($row)
@@ -3075,6 +3106,12 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
   $('<td>').append($('<input>').attr('type', 'checkbox').attr('id', 'spiHelper_block_lock' + id)
     .prop('disabled', mw.util.isIPAddress(name, true))).appendTo($row)
   $table.append($row)
+  if(spiHelperIsMobile) {
+  	$table.append($adminRow)  	
+  	$('#spiHelper_blockTable th.spiHelper_adminClass').each((thIndex,th) => {  		  		
+		  $(th).children().clone().insertAfter($adminRow.find('td').eq(thIndex).find('input[type="checkbox"]'))  		
+  	})
+  }
 
   // Generate the select entries
   spiHelperGenerateSelect('spiHelper_block_tag' + id, spiHelperTagOptions)
@@ -3085,6 +3122,26 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
     const id = $(event.target).attr('id').replace('spiHelper_block_username', '')
     $('#spiHelper_block_lock' + id).prop('disabled', mw.util.isIPAddress($(event.target).val(), true))
   })
+}
+
+async function spiHelperInitMobileBlockTable() {
+  'use strict'
+
+  $('#spiHelper_blockTable th.spiHelper_adminClass').hide()
+  const $allRow=$('#spiHelper_block_allusers')
+  const $adminCells=$allRow.find('.spiHelper_adminClass')
+  $adminCells.detach()
+  const $allAdminRow=$('<tr/>')
+  $allAdminRow.addClass('spiHelper_adminClass').insertAfter($allRow).append($adminCells)
+  $('#spiHelper_blockTable th.spiHelper_adminClass').each((thIndex,th) => {  		  		
+  	$(th).children().clone().insertAfter($allAdminRow.find('td').eq(thIndex).find('input[type="checkbox"]'))  		
+  })	
+}
+
+async function spiHelperInitMobileUserInfoTable() {
+  'use strict'
+
+
 }
 
 async function spiHelperGenerateLinksTableLine (username, id) {
@@ -3425,13 +3482,15 @@ async function spiHelperAddLink () {
   'use strict'
   await spiHelperLoadSettings()
   await mw.loader.load('mediawiki.util')
-  const initLink = mw.util.addPortletLink('p-cactions', '#', 'SPI', 'ca-spiHelper')
+  let portlet = spiHelperIsMobile ? 'p-personal' : 'p-cactions'
+  const initLink = mw.util.addPortletLink(portlet , '#', 'SPI', 'ca-spiHelper')
   initLink.addEventListener('click', (e) => {
     e.preventDefault()
     return spiHelperInit()
   })
-  if (mw.config.get('wgCategories').includes('SPI cases awaiting archive') && spiHelperIsClerk()) {
-    const oneClickArchiveLink = mw.util.addPortletLink('p-cactions', '#', 'SPI-Archive', 'ca-spiHelperArchive')
+  const $awaitingArchiveCat = $('#mw-normal-catlinks a:contains("SPI cases awaiting archive")')
+  if ($awaitingArchiveCat.length > 0 && spiHelperIsClerk()) {
+    const oneClickArchiveLink = mw.util.addPortletLink(portlet, '#', 'SPI-Archive', 'ca-spiHelperArchive')
     $(oneClickArchiveLink).one('click', (e) => {
       e.preventDefault()
       return spiHelperOneClickArchive()
