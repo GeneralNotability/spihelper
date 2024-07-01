@@ -29,3 +29,7 @@
 #spiHelper_actionViewDiv > div {
     display: none;
 }
+
+#spiHelper_blockTable thead {
+	border-bottom:2px solid black;
+}

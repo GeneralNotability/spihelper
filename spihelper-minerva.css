@@ -1,0 +1,42 @@
+.spiHelper_ViewDiv {
+	margin: 0 auto;
+	width: 90%;
+	max-width: 993.3px;		
+}
+
+.spiHelper_ViewDiv input[type="text"],
+.spiHelper_ViewDiv input[type="button"],
+.spiHelper_ViewDiv select {
+	padding: 1px 4px;
+	border: solid 1px #8f8f9d;
+}
+
+.spiHelper_ViewDiv ul {
+	margin: 4px 0;
+}
+
+.spiHelper_ViewDiv textarea {
+	display: block;
+}
+
+#spiHelper_blockTable input[type="text"],
+#spiHelper_blockTable select,
+#spiHelper_userInfoTable input[type="text"] {
+	width: 80px;
+}
+
+#spiHelper_blockTable th,
+#spiHelper_blockTable .spiHelper_adminClass span {
+	font-size: 10px;
+}
+
+#spiHelper_blockTable .spiHelper_adminClass input[type="text"] {
+	width: 70px;
+}
+
+#spiHelper_blockTable .spiHelper_adminClass input[type="checkbox"] {
+	display: block;
+}
+
+
+
