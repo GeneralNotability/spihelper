@@ -566,12 +566,8 @@ const spiHelperActionViewHTML = `
 /**
  * Big function to generate the SPI form from the top-level menu selections
  *
- * Would fail ESlint no-unused-vars due to only being
- * referenced in an onclick event
- *
  * @return {Promise<void>}
  */
-// eslint-disable-next-line no-unused-vars
 async function spiHelperGenerateForm () {
   'use strict'
   spiHelperBlockTableUserCount = 0
@@ -755,35 +751,29 @@ async function spiHelperGenerateForm () {
     $('#spiHelper_moveView', $actionView).show()
   }
   if (spiHelperActionsSelected.Block || spiHelperActionsSelected.Link) {
-    // eslint-disable-next-line no-useless-escape
-    
-    const checkuserRegex = /{{\s*check(?:user|ip)\s*\|\s*(?:1=)?\s*([^\|}]*?)\s*(?:\|master name\s*=\s*.*)?}}/gi
-    const results = pagetext.match(checkuserRegex)
     const likelyusers = []
     const likelyips = []
     const possibleusers = []
     const possibleips = []
-    likelyusers.push(spiHelperCaseName)    
+    likelyusers.push(spiHelperCaseName)
 
-    
-    let socklist = $(`a[href$="section=${spiHelperSectionId}"]`).parents().not(':has(hr)').nextUntil('hr').find('.cuEntry').find('a:first')
-    for(let element of socklist) {
-      let username = spiHelperNormalizeUsername($(element).text())
+    // eslint-disable-next-line no-jquery/no-sizzle
+    const $socklist = $(`a[href$="section=${spiHelperSectionId}"]`).parents().not(':has(hr)').nextUntil('hr').find('.cuEntry').find('a:first')
+    for (const element of $socklist) {
+      const username = spiHelperNormalizeUsername($(element).text())
       const isIP = mw.util.isIPAddress(username, true)
-        if (!isIP && !likelyusers.includes(username)) {
-          likelyusers.push(username)
-        } else if (isIP && !likelyips.includes(username)) {
-          if (spiHelperSettings.displayIPv6As64 && mw.util.isIPv6Address(username, false)) {
-            likelyips.push(username.split(':').slice(0, 4).concat('0', '0', '0', '0').join(':') + '/64')
-            continue
-          }
-          likelyips.push(username)
+      if (!isIP && !likelyusers.includes(username)) {
+        likelyusers.push(username)
+      } else if (isIP && !likelyips.includes(username)) {
+        if (spiHelperSettings.displayIPv6As64 && mw.util.isIPv6Address(username, false)) {
+          likelyips.push(username.split(':').slice(0, 4).concat('0', '0', '0', '0').join(':') + '/64')
+          continue
         }
+        likelyips.push(username)
+      }
     }
-    
 
-    // eslint-disable-next-line no-useless-escape
-    const userRegex = /{{[^\|}{]*?(?:user|vandal|IP|noping)[^\|}{]*?\|\s*(?:1=)?\s*([^\|}]*?)\s*}}/gi
+    const userRegex = /{{[^|}{]*?(?:user|vandal|IP|noping)[^|}{]*?\|\s*(?:1=)?\s*([^|}]*?)\s*}}/gi
     const userresults = pagetext.match(userRegex)
     if (userresults) {
       for (let i = 0; i < userresults.length; i++) {
@@ -928,7 +918,7 @@ async function updateForRole (view) {
  * Archives everything on the page that's eligible for archiving
  */
 async function spiHelperOneClickArchive () {
-  'use strict'  
+  'use strict'
   spiHelperActiveOperations.set('oneClickArchive', 'running')
 
   const pagetext = await spiHelperGetPageText(spiHelperPageName, false)
@@ -1448,7 +1438,7 @@ async function spiHelperPerformActions () {
     if (needsAltmaster) {
       altmaster = prompt('Please enter the name of the alternate sockmaster: ', spiHelperCaseName) || spiHelperCaseName
     }
-    
+
     const tagNonLocalAccounts = $('#spiHelper_tagAccountsWithoutLocalAccount', $actionView).prop('checked')
     let blockingPromises
     if (spiHelperIsAdmin()) {
@@ -1671,11 +1661,11 @@ async function spiHelperPerformActions () {
     // Archive the case
     if (spiHelperSectionId === null) {
       // Archive the whole case
-      logMessage += '\n** Archived case'      
+      logMessage += '\n** Archived case'
       await spiHelperArchiveCase()
     } else {
       // Just archive the selected section
-      logMessage += '\n** Archived section'      
+      logMessage += '\n** Archived section'
       await spiHelperArchiveCaseSection(spiHelperSectionId)
     }
   } else if (spiHelperActionsSelected.Rename && renameTarget) {
@@ -1817,8 +1807,8 @@ async function spiHelperPostMergeCleanup (originalText) {
 /**
  * Archive all closed sections of a case
  */
-async function spiHelperArchiveCase () {  
-  'use strict'  
+async function spiHelperArchiveCase () {
+  'use strict'
   let i = 0
   let previousRev = 0
   while (i < spiHelperCaseSections.length) {
@@ -1864,7 +1854,7 @@ async function spiHelperArchiveCase () {
         await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
       }
       // Need an await here - if we have multiple sections archiving we don't want
-      // to stomp on each other      
+      // to stomp on each other
       await spiHelperArchiveCaseSection(sectionId)
       // need to re-fetch caseSections since the section numbering probably just changed,
       // also reset our index
@@ -1883,16 +1873,15 @@ async function spiHelperArchiveCaseSection (sectionId) {
   'use strict'
   let sectionText = await spiHelperGetPageText(spiHelperPageName, true, sectionId)
   sectionText = sectionText.replace(spiHelperCaseStatusRegex, '')
-  const newarchivetext = sectionText.substring(sectionText.search(spiHelperSectionRegex))  
-  let archivetext = await spiHelperGetPageText(spiHelperGetArchiveName(), true)  
+  const newarchivetext = sectionText.substring(sectionText.search(spiHelperSectionRegex))
+  let archivetext = await spiHelperGetPageText(spiHelperGetArchiveName(), true)
 
   const $statusLine = $('<li>').appendTo($('#spiHelper_status', document))
-  //Edit conflict check
-  if(archivetext.includes(sectionText)) {
+  // Edit conflict check
+  if (archivetext.includes(sectionText)) {
     $statusLine.addClass('spihelper-errortext').append('b').text('Looks like the page has been archived already')
-    return      
+    return
   }
-
 
   // Update the archive
   if (!archivetext) {
@@ -1905,7 +1894,7 @@ async function spiHelperArchiveCaseSection (sectionId) {
     'Archiving case section from [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]',
     false, spiHelperSettings.watchArchive, spiHelperSettings.watchArchiveExpiry)
 
-  if (!archiveSuccess) {    
+  if (!archiveSuccess) {
     $statusLine.addClass('spihelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
     return
   }
@@ -3408,7 +3397,7 @@ async function spiHelperAddLink () {
   const initLink = mw.util.addPortletLink('p-cactions', '#', 'SPI', 'ca-spiHelper')
   // The skin didn't have a p-cactions menu so the menu addition failed. Exit early.
   if (!initLink) {
-    return false;
+    return false
   }
   initLink.addEventListener('click', (e) => {
     e.preventDefault()
