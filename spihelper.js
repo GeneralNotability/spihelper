@@ -766,8 +766,8 @@ async function spiHelperGenerateForm () {
     likelyusers.push(spiHelperCaseName)    
 
     
-    let socklist = $(`a[href$="section=${spiHelperSectionId}"]`).parents().not(':has(hr)').nextUntil('hr').find('.cuEntry').find('a:first')
-    for(let element of socklist) {
+    let socklist = $(`a[href*="section=${spiHelperSectionId}"]`).parents().not(':has(hr)').nextUntil('hr').find('.cuEntry').find('a:first')
+    for (let element of socklist) {
       let username = spiHelperNormalizeUsername($(element).text())
       const isIP = mw.util.isIPAddress(username, true)
         if (!isIP && !likelyusers.includes(username)) {
