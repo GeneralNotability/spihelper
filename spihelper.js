@@ -1561,6 +1561,11 @@ async function spiHelperPerformActions () {
         if (mw.util.isIPAddress(globalLockEntry, true)) {
           return
         }
+        // skip if already globally locked
+        if (await spiHelperIsUserGloballyLocked(globalLockEntry)) {
+          return
+        }
+
         templateContent += '|' + (matchCount + 1) + '=' + globalLockEntry
         if (locked) {
           locked += ', '
@@ -3004,6 +3009,7 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
 
   let block, ab, acb, ntp, nem, duration
 
+  const isIP = mw.util.isIPAddress(name, true)
   if (currentBlock) {
     block = true
     acb = currentBlock.acb
@@ -3017,7 +3023,7 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
     ab = true
     ntp = spiHelperArchiveNoticeParams.notalk
     nem = spiHelperArchiveNoticeParams.notalk
-    duration = mw.util.isIPAddress(name, true) ? '1 week' : 'indefinite'
+    duration = isIP ? '1 week' : 'indefinite'
   }
 
   const $table = $('#spiHelper_blockTable', document)
@@ -3053,7 +3059,7 @@ async function spiHelperGenerateBlockTableLine (name, defaultblock, id) {
     .val(name)).appendTo($row)
   // Global lock (disabled for IPs since they can't be locked)
   $('<td>').append($('<input>').attr('type', 'checkbox').attr('id', 'spiHelper_block_lock' + id)
-    .prop('disabled', mw.util.isIPAddress(name, true))).appendTo($row)
+    .prop('disabled', isIP).prop('checked', !isIP && spiHelperArchiveNoticeParams.xwiki)).appendTo($row)
   $table.append($row)
 
   // Generate the select entries
