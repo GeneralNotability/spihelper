@@ -250,6 +250,8 @@ const spiHelperAdminTemplates = [
 const spiHelperCaseStatusRegex = /{{\s*SPI case status\s*\|?\s*(\S*?)\s*}}/i
 // Regex to match closed case statuses (close or closed)
 const spiHelperCaseClosedRegex = /^closed?$/i
+// Regex to match the closed case statuses with the full template string (used for optimized one-click archiving)
+const spiHelperCaseStatusClosedRegex = /{{\s*SPI case status\s*\|?\s*closed?\s*}}/gi
 
 const spiHelperClerkStatusRegex = /{{(CURequest|awaitingadmin|clerk ?request|(?:self|requestand|cu)?endorse|inprogress|decline(?:-ip)?|moreinfo|relisted|onhold)}}/i
 
@@ -1819,61 +1821,102 @@ async function spiHelperPostMergeCleanup (originalText) {
  */
 async function spiHelperArchiveCase () {  
   'use strict'  
-  let i = 0
-  let previousRev = 0
-  while (i < spiHelperCaseSections.length) {
-    const sectionId = spiHelperCaseSections[i].index
-    const sectionText = await spiHelperGetPageText(spiHelperPageName, false,
-      sectionId)
+  // Get the entire page text
+  let pageText = await spiHelperGetPageText(spiHelperPageName, true)
 
-    const currentRev = await spiHelperGetPageRev(spiHelperPageName)
-    if (previousRev === currentRev && currentRev !== 0) {
-      // Our previous archive hasn't gone through yet, wait a bit and retry
-      await new Promise((resolve) => {
-        setTimeout(resolve, 100)
-      })
+  // Remove all {{SPI case status|close(d)}} templates from the page text
+  pageText = pageText.replaceAll(spiHelperCaseStatusClosedRegex, '')
 
-      // Re-grab the case sections list since the page may have updated
-      spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
-      continue
-    }
-    previousRev = await spiHelperGetPageRev(spiHelperPageName)
-    i++
-    const result = spiHelperCaseStatusRegex.exec(sectionText)
-    if (result === null) {
-      // Bail out - can't find the case status template in this section
-      continue
-    }
-    if (spiHelperCaseClosedRegex.test(result[1])) {
-      // A running concern with the SPI archives is whether they exceed the post-expand
-      // include size. Calculate what percent of that size the archive will be if we
-      // add the current page to it - if >1, we need to archive the archive
-      const postExpandPercent =
-        (await spiHelperGetPostExpandSize(spiHelperPageName, sectionId) +
-        await spiHelperGetPostExpandSize(spiHelperGetArchiveName())) /
-        spiHelperGetMaxPostExpandSize()
-      if (postExpandPercent >= 1) {
-        // We'd overflow the archive, so move it and then archive the current page
-        // Find the first empty archive page
-        let archiveId = 1
-        while (await spiHelperGetPageText(spiHelperGetArchiveName() + '/' + archiveId, false) !== '') {
-          archiveId++
-        }
-        const newArchiveName = spiHelperGetArchiveName() + '/' + archiveId
-        await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false, false)
-        await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
+  let textToArchiveLines = []
+  let textToKeepLines = []
+  let sectionLines = []
+
+  // Now we will iterate line by line through pageText and decide if the line
+  // should be appended to textToArchiveLines, which we will then append to the archive,
+  // or textToKeepLines, which will remain on the case page.
+  let inClosedSection = false
+  for (const line of pageText.split('\n')) {
+    if (spiHelperSectionRegex.test(line)) {
+      // We found the start of an SPI case section
+      if (inClosedSection) {
+        textToArchiveLines.push(sectionLines.join('\n'))
+      } else {
+        textToKeepLines.push(sectionLines.join('\n'))
       }
-      // Need an await here - if we have multiple sections archiving we don't want
-      // to stomp on each other      
-      await spiHelperArchiveCaseSection(sectionId)
-      // need to re-fetch caseSections since the section numbering probably just changed,
-      // also reset our index
-      i = 0
-      spiHelperCaseSections = await spiHelperGetInvestigationSectionIDs()
-    }
-  }
-}
 
+      // reset sectionLines to hold the current section's text
+      sectionLines = []
+
+      // start by assuming that this section is closed
+      inClosedSection = true
+    }
+
+    const case_status = line.match(spiHelperCaseStatusRegex)
+    if (case_status && !spiHelperCaseClosedRegex.test(case_status[1])) {
+      // this section is not in fact closed
+      inClosedSection = false
+    }
+
+    sectionLines.push(line)
+  }
+
+  if (inClosedSection) {
+    textToArchiveLines.push(sectionLines.join('\n'))
+  } else {
+    textToKeepLines.push(sectionLines.join('\n'))
+  }
+
+  const textToArchive = textToArchiveLines.join('\n')
+  const textToKeep = textToKeepLines.join('\n')
+
+  if (!textToArchive) {
+    // Nothing to archive
+    console.log("spihelper: nothing to archive here.")
+    return
+  }
+
+  // A running concern with the SPI archives is whether they exceed the post-expand
+  // include size. Calculate what percent of that size the archive will be if we
+  // add the current page to it - if >1, we need to archive the archive
+  const postExpandPercent =
+    (await spiHelperGetPostExpandSize(spiHelperPageName) +
+    await spiHelperGetPostExpandSize(spiHelperGetArchiveName())) /
+    spiHelperGetMaxPostExpandSize()
+  if (postExpandPercent >= 1) {
+    // We'd overflow the archive, so move it and then archive the current page
+    // Find the first empty archive page
+    let archiveId = 1
+    while (await spiHelperGetPageText(spiHelperGetArchiveName() + '/' + archiveId, false) !== '') {
+      archiveId++
+    }
+    const newArchiveName = spiHelperGetArchiveName() + '/' + archiveId
+    await spiHelperMovePage(spiHelperGetArchiveName(), newArchiveName, 'Moving archive to avoid exceeding post expand size limit', false, false)
+    await spiHelperEditPage(spiHelperGetArchiveName(), '', 'Removing redirect', false, 'nochange')
+  }
+
+  // Update the archive
+  let archivetext = await spiHelperGetPageText(spiHelperGetArchiveName(), true)
+  if (!archivetext) {
+    archivetext = '__TOC__\n{{SPIarchive notice|1=' + spiHelperCaseName + '}}\n{{SPIpriorcases}}'
+  } else {
+    archivetext = archivetext.replace(/<br\s*\/>\s*{{SPIpriorcases}}/gi, '\n{{SPIpriorcases}}') // fmt fix whenever needed.
+  }
+  archivetext += '\n' + textToArchive
+  const archiveSuccess = await spiHelperEditPage(spiHelperGetArchiveName(), archivetext,
+    'Archiving closed section(s) from [[' + spiHelperGetInterwikiPrefix() + spiHelperPageName + ']]',
+    false, spiHelperSettings.watchArchive, spiHelperSettings.watchArchiveExpiry)
+
+  if (!archiveSuccess) {    
+    $statusLine.addClass('spihelper-errortext').append('b').text('Failed to update archive, not removing section from case page')
+    return
+  }
+
+  // Update case page to blank the sections we archived
+  await spiHelperEditPage(spiHelperPageName, textToKeep, 'Archiving closed section(s) to [[' + spiHelperGetInterwikiPrefix() + spiHelperGetArchiveName() + ']]',
+    false, spiHelperSettings.watchCase, spiHelperSettings.watchCaseExpiry, spiHelperStartingRevID, null)
+  // Update to the latest revision ID
+  spiHelperStartingRevID = await spiHelperGetPageRev(spiHelperPageName)
+}
 /**
  * Archive a specific section of a case
  *
